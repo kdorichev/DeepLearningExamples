@@ -33,12 +33,13 @@ from contextlib import contextmanager
 
 import torch
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
-from torch.nn.parameter import Parameter
+# unused from torch.autograd import Variable
+# unused from torch.nn.parameter import Parameter
 
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 
+# unused: from scipy.io.wavfile import write as write_wav
 from apex.parallel import DistributedDataParallel as DDP
 
 import models
@@ -46,9 +47,8 @@ import loss_functions
 import data_functions
 
 import dllogger as DLLogger
-from dllogger import StdOutBackend, JSONStreamBackend, Verbosity
-
-from scipy.io.wavfile import write as write_wav
+# unused from dllogger import StdOutBackend, JSONStreamBackend, Verbosity
+from common.log_helper import init_dllogger, TBLogger, unique_dllogger_fpath
 
 from apex import amp
 amp.lists.functional_overrides.FP32_FUNCS.remove('softmax')
@@ -349,14 +349,23 @@ def main():
 
     distributed_run = world_size > 1
 
+    # if local_rank == 0:
+    #     DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT,
+    #                                               args.output+'/'+args.log_file),
+    #                             StdOutBackend(Verbosity.VERBOSE)])
+    # else:
+    #     DLLogger.init(backends=[])
     if local_rank == 0:
-        DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT,
-                                                  args.output+'/'+args.log_file),
-                                StdOutBackend(Verbosity.VERBOSE)])
-    else:
-        DLLogger.init(backends=[])
+        if not os.path.exists(args.output):
+            os.makedirs(args.output)
 
-    for k,v in vars(args).items():
+        log_fpath = args.log_file or os.path.join(args.output, 'nvlog.json')
+        log_fpath = unique_dllogger_fpath(log_fpath)
+        init_dllogger(log_fpath)
+    else:
+        init_dllogger(dummy=True)
+        
+    for k, v in vars(args).items():
         DLLogger.log(step="PARAMETER", data={k:v})
     DLLogger.log(step="PARAMETER", data={'model_name':'Tacotron2_PyT'})
 
@@ -374,9 +383,10 @@ def main():
     run_start_time = time.perf_counter()
 
     model_config = models.get_model_config(model_name, args)
-    model = models.get_model(model_name, model_config,
-                             cpu_run=False,
-                             uniform_initialize_bn_weight=not args.disable_uniform_initialize_bn_weight)
+    model = models.get_model(
+        model_name, model_config,
+        cpu_run=False,
+        uniform_initialize_bn_weight=not args.disable_uniform_initialize_bn_weight)
 
     if not args.amp and distributed_run:
         model = DDP(model)
@@ -417,11 +427,9 @@ def main():
     trainset = data_functions.get_data_loader(
         model_name, args.dataset_path, args.training_files, args)
     if distributed_run:
-        train_sampler = DistributedSampler(trainset)
-        shuffle = False
+        train_sampler, shuffle = DistributedSampler(trainset), False
     else:
-        train_sampler = None
-        shuffle = True
+        train_sampler, shuffle = None, True
 
     train_loader = DataLoader(trainset, num_workers=1, shuffle=shuffle,
                               sampler=train_sampler,
@@ -439,6 +447,12 @@ def main():
     num_iters = 0
 
     model.train()
+
+    train_tblogger = TBLogger(local_rank, args.output, 'train')
+    val_tblogger = TBLogger(local_rank, args.output, 'val', dummies=True)
+    
+    if args.ema_decay > 0:
+        val_ema_tblogger = TBLogger(local_rank, args.output, 'val_ema')    
 
     for epoch in range(start_epoch, args.epochs):
         torch.cuda.synchronize()
@@ -463,9 +477,17 @@ def main():
             DLLogger.log(step=(epoch, i),
                          data={'glob_iter/iters_per_epoch': str(iteration)+"/"+str(len(train_loader))})
 
+            old_lr = optimizer.param_groups[0]['lr']
             adjust_learning_rate(iteration, epoch, optimizer, args.learning_rate,
                                  args.anneal_steps, args.anneal_factor, local_rank)
-
+            new_lr = optimizer.param_groups[0]['lr']
+            
+            if new_lr != old_lr:
+                dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
+                train_tblogger.log_value(iteration, 'lrate', new_lr)
+            else:
+                dllog_lrate_change = None
+            
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
 
@@ -488,6 +510,7 @@ def main():
             # accumulate number of items processed in this epoch
             reduced_num_items_epoch += reduced_num_items
 
+            train_tblogger.log_grads(iteration, model)
             if args.amp:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
@@ -508,6 +531,7 @@ def main():
 
             DLLogger.log(step=(epoch, i), data={'train_items_per_sec': items_per_sec})
             DLLogger.log(step=(epoch, i), data={'train_iter_time': iter_time})
+            # FIXME: iter_meta to be collected. train_tblogger.log_meta(iteration, iter_meta)
             iteration += 1
 
         torch.cuda.synchronize()
