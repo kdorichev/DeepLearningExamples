@@ -462,11 +462,12 @@ def main():
         if distributed_run:
             train_loader.sampler.set_epoch(epoch)
 
+        num_iters = len(train_loader)
         for i, batch in enumerate(train_loader):
             torch.cuda.synchronize()
             iter_start_time = time.perf_counter()
-            DLLogger.log(step=(epoch, i),
-                         data={'glob_iter/iters_per_epoch': str(iteration)+"/"+str(len(train_loader))})
+     #       DLLogger.log(step=(epoch, i),
+     #                    data={'glob_iter/iters_per_epoch': str(iteration)+"/"+str(num_iters)})
 
             old_lr = optimizer.param_groups[0]['lr']
             adjust_learning_rate(iteration, epoch, optimizer, args.learning_rate,
@@ -495,8 +496,6 @@ def main():
             if np.isnan(reduced_loss):
                 raise Exception("loss is NaN")
 
-            DLLogger.log(step=(epoch,i), data={'train_loss': reduced_loss})
-
             num_iters += 1
 
             # accumulate number of items processed in this epoch
@@ -522,18 +521,25 @@ def main():
             items_per_sec = reduced_num_items/iter_time
             train_epoch_items_per_sec += items_per_sec
 
-            DLLogger.log(step=(epoch, i), data={'train_items_per_sec': items_per_sec})
-            DLLogger.log(step=(epoch, i), data={'train_iter_time': iter_time})
+            # End of batch
+            DLLogger.log(step=(epoch, i, num_iters), 
+                         data=OrderedDict([
+                            ('train_loss', reduced_loss),
+                            ('train_items_per_sec', items_per_sec),
+                            ('train_iter_time', iter_time)
+                        ]))
+
             # FIXME: iter_meta to be collected. train_tblogger.log_meta(iteration, iter_meta)
             iteration += 1
 
+        # End of epoch
         torch.cuda.synchronize()
         epoch_stop_time = time.perf_counter()
         epoch_time = epoch_stop_time - epoch_start_time
 
+        DLLogger.log(step=(epoch,), data={'train_loss': reduced_loss})
         DLLogger.log(step=(epoch,), data={'train_items_per_sec':
                                           (train_epoch_items_per_sec/num_iters if num_iters > 0 else 0.0)})
-        DLLogger.log(step=(epoch,), data={'train_loss': reduced_loss})
         DLLogger.log(step=(epoch,), data={'train_epoch_time': epoch_time})
 
         val_loss = validate(model, criterion, valset, epoch, iteration,
@@ -548,9 +554,11 @@ def main():
         if local_rank == 0:
             DLLogger.flush()
 
+    # End of training
     torch.cuda.synchronize()
     run_stop_time = time.perf_counter()
     run_time = run_stop_time - run_start_time
+    
     DLLogger.log(step=tuple(), data={'run_time': run_time})
     DLLogger.log(step=tuple(), data={'val_loss': val_loss})
     DLLogger.log(step=tuple(), data={'train_items_per_sec':
