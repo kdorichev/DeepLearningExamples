@@ -30,7 +30,7 @@ import time
 import argparse
 import numpy as np
 from contextlib import contextmanager
-
+from collections import OrderedDict
 import torch
 from torch.utils.data import DataLoader
 # unused from torch.autograd import Variable
@@ -462,7 +462,7 @@ def main():
         if distributed_run:
             train_loader.sampler.set_epoch(epoch)
 
-        num_iters = len(train_loader)
+        num_batches = len(train_loader)
         for i, batch in enumerate(train_loader):
             torch.cuda.synchronize()
             iter_start_time = time.perf_counter()
@@ -522,7 +522,7 @@ def main():
             train_epoch_items_per_sec += items_per_sec
 
             # End of batch
-            DLLogger.log(step=(epoch, i, num_iters), 
+            DLLogger.log(step=(epoch, i, num_batches), 
                          data=OrderedDict([
                             ('train_loss', reduced_loss),
                             ('train_items_per_sec', items_per_sec),
