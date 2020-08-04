@@ -349,12 +349,6 @@ def main():
 
     distributed_run = world_size > 1
 
-    # if local_rank == 0:
-    #     DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT,
-    #                                               args.output+'/'+args.log_file),
-    #                             StdOutBackend(Verbosity.VERBOSE)])
-    # else:
-    #     DLLogger.init(backends=[])
     if local_rank == 0:
         if not os.path.exists(args.output):
             os.makedirs(args.output)
@@ -451,9 +445,6 @@ def main():
     train_tblogger = TBLogger(local_rank, args.output, 'train')
     val_tblogger = TBLogger(local_rank, args.output, 'val', dummies=True)
     
-    if args.ema_decay > 0:
-        val_ema_tblogger = TBLogger(local_rank, args.output, 'val_ema')    
-
     for epoch in range(start_epoch, args.epochs):
         torch.cuda.synchronize()
         epoch_start_time = time.perf_counter()
@@ -482,17 +473,18 @@ def main():
                                  args.anneal_steps, args.anneal_factor, local_rank)
             new_lr = optimizer.param_groups[0]['lr']
             
-            if new_lr != old_lr:
-                dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
-                train_tblogger.log_value(iteration, 'lrate', new_lr)
-            else:
-                dllog_lrate_change = None
+            # if new_lr != old_lr:
+            # dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
+            train_tblogger.log_value(iteration, 'lrate', new_lr)
+            # else:
+            #    dllog_lrate_change = None
             
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
 
             y_pred = model(x)
             loss = criterion(y_pred, y)
+            train_tblogger.log_value(iteration, 'loss', loss.item())
 
             if distributed_run:
                 reduced_loss = reduce_tensor(loss.data, world_size).item()
@@ -510,7 +502,6 @@ def main():
             # accumulate number of items processed in this epoch
             reduced_num_items_epoch += reduced_num_items
 
-            train_tblogger.log_grads(iteration, model)
             if args.amp:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
@@ -520,6 +511,8 @@ def main():
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     model.parameters(), args.grad_clip_thresh)
+
+            train_tblogger.log_grads(iteration, model)
 
             optimizer.step()
 
@@ -546,6 +539,7 @@ def main():
         val_loss = validate(model, criterion, valset, epoch, iteration,
                             args.batch_size, world_size, collate_fn,
                             distributed_run, local_rank, batch_to_gpu)
+        val_tblogger.log_value(iteration, 'val_loss', val_loss)
 
         if (epoch % args.epochs_per_checkpoint == 0) and args.bench_class == "":
             save_checkpoint(model, optimizer, epoch, model_config,
