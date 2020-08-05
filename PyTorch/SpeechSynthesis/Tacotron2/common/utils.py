@@ -40,10 +40,6 @@ def get_mask_from_lengths(lengths):
     return mask
 
 
-# def load_wav_to_torch(full_path):
-#     sampling_rate, data = read(full_path)
-#     return torch.FloatTensor(data.astype(np.float32)), sampling_rate
-
 def load_wav_to_torch(full_path: str, sr: Optional[int] = 22050) -> Tuple[torch.Tensor, int]:
     """Load audio file from `full_path` with optional resamplling to `sr`.
     Args:
