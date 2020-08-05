@@ -25,11 +25,12 @@
 #
 # *****************************************************************************
 
-import numpy as np
-from scipy.io.wavfile import read
-import torch
 import os
-
+from typing import Optional, Tuple
+import numpy as np
+# from scipy.io.wavfile import read
+import torch
+from librosa.core import load
 
 def get_mask_from_lengths(lengths):
     max_len = torch.max(lengths).item()
@@ -39,9 +40,21 @@ def get_mask_from_lengths(lengths):
     return mask
 
 
-def load_wav_to_torch(full_path):
-    sampling_rate, data = read(full_path)
-    return torch.FloatTensor(data.astype(np.float32)), sampling_rate
+# def load_wav_to_torch(full_path):
+#     sampling_rate, data = read(full_path)
+#     return torch.FloatTensor(data.astype(np.float32)), sampling_rate
+
+def load_wav_to_torch(full_path: str, sr: Optional[int] = 22050) -> Tuple[torch.Tensor, int]:
+    """Load audio file from `full_path` with optional resamplling to `sr`.
+    Args:
+        full_path (str): path to audio file.
+        sr (int, optional): sample rate to resample to.
+    Returns:
+        (torch.Tensor, sampling_rate)
+    """
+
+    data, sampling_rate = load(full_path, sr)
+    return torch.from_numpy(data), sampling_rate
 
 
 def load_filepaths_and_text(dataset_path, filename, split="|"):
