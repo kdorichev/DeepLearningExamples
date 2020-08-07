@@ -10,8 +10,6 @@ See TRAINING_DATA.md for details.
 from https://github.com/keithito/tacotron
 """
 
-from common.text import cmudict
-
 _pad        = '_'
 _punctuation = '!?,.:;– '
 _special = '+-'
