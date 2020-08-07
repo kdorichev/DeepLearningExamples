@@ -537,15 +537,16 @@ def main():
         epoch_stop_time = time.perf_counter()
         epoch_time = epoch_stop_time - epoch_start_time
 
-        DLLogger.log(step=(epoch,), data={'train_loss': reduced_loss})
-        DLLogger.log(step=(epoch,), data={'train_items_per_sec':
-                                          (train_epoch_items_per_sec/num_iters if num_iters > 0 else 0.0)})
-        DLLogger.log(step=(epoch,), data={'train_epoch_time': epoch_time})
+        DLLogger.log(step=(epoch,), 
+                    data=OrderedDict([('train_loss', reduced_loss),
+                                      ('train_items_per_sec',
+                                          (train_epoch_items_per_sec/num_iters if num_iters > 0 else 0.0)),
+                                      ('train_epoch_time', epoch_time)]))
 
         val_loss = validate(model, criterion, valset, epoch, iteration,
                             args.batch_size, world_size, collate_fn,
                             distributed_run, local_rank, batch_to_gpu)
-        val_tblogger.log_value(iteration, 'val_loss', val_loss)
+        val_tblogger.log_value(iteration, 'loss', val_loss)
 
         if (epoch % args.epochs_per_checkpoint == 0) and args.bench_class == "":
             save_checkpoint(model, optimizer, epoch, model_config,
