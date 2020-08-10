@@ -57,11 +57,11 @@ def parse_args(parser):
     parser.add_argument('--wav-text-filelist', required=True,
                         type=str, help='Path to file with audio paths and text')
     parser.add_argument('--text-cleaners', nargs='*',
-                        default=['english_cleaners'], type=str,
+                        default=['russian_cleaner'], type=str,
                         help='Type of text cleaners for input text')
-    parser.add_argument('--max-wav-value', default=32768.0, type=float,
-                        help='Maximum audiowave value')
-    parser.add_argument('--sampling-rate', default=22050, type=int,
+    parser.add_argument('--max-wav-value', default=1.0, type=float,
+                        help='Maximum audio value for normalization')
+    parser.add_argument('--sampling-rate', default=48000, type=int,
                         help='Sampling rate')
     parser.add_argument('--filter-length', default=1024, type=int,
                         help='Filter length')
@@ -190,7 +190,7 @@ def main():
 
     DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT, args.log_file),
                             StdOutBackend(Verbosity.VERBOSE)])
-    for k,v in vars(args).items():
+    for k, v in vars(args).items():
         DLLogger.log(step="PARAMETER", data={k:v})
 
     model = load_and_setup_model(
@@ -219,6 +219,7 @@ def main():
                              collate_fn=TextMelCollate(1),
                              pin_memory=False, drop_last=False)
     pitch_vecs = {'mel': {}, 'char': {}, 'trichar': {}}
+
     for i, batch in enumerate(data_loader):
         tik = time.time()
         fnames = batch[-1]
