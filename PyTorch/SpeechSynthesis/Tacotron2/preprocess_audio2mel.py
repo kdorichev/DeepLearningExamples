@@ -15,7 +15,7 @@ def parse_args(parser):
     parser.add_argument('--mel-files', required=True,
                         type=str, help='Path to filelist with mel paths and text')
     parser.add_argument('--text-cleaners', nargs='*',
-                        default=['english_cleaners'], type=str,
+                        default=['russian_cleaner'], type=str,
                         help='Type of text cleaners for input text')
     parser.add_argument('--max-wav-value', default=32768.0, type=float,
                         help='Maximum audiowave value')
@@ -33,6 +33,8 @@ def parse_args(parser):
                         help='Maximum mel frequency')
     parser.add_argument('--n-mel-channels', default=80, type=int,
                         help='Number of bins in mel-spectrograms')
+    parser.add_argument('--load-mel-from-disk', default=True, type=bool,
+                        help='To load pre-calculated mels from disk')
 
     return parser
 
@@ -56,7 +58,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch Tacotron 2 Training')
     parser = parse_args(parser)
     args = parser.parse_args()
-    args.load_mel_from_disk = False
+    args.load_mel_from_disk = True
 
     audio2mel(args.dataset_path, args.wav_files, args.mel_files, args)
 
