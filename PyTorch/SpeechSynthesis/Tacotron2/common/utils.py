@@ -53,15 +53,32 @@ def load_wav_to_torch(full_path: str, sr: Optional[int] = 22050) -> Tuple[torch.
     return torch.from_numpy(data), sampling_rate
 
 
-def load_filepaths_and_text(dataset_path, filename, split="|"):
+def load_filepaths_and_text(dataset_path: str, filename: str, split="|") -> list:
+    """Return a list of tuples: (path to mel file, text).
+    `filename` has either 2 or 4 fields, like:
+    
+    LJSpeech-1.1/mels/LJ003-0182.pt|The tried and the untried, ...
+    mels/EHD_120770D_022.pt|durations/EHD_120770D_022.pt|pitch_char/EHD_120770D_022.pt|домысел
+
+    Args:
+        dataset_path (str): Path to root of the dataset.
+        filename (str): Name of file to parse.
+        split (str, optional): A symbol to split on. Defaults to "|".
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        list: [description]
+    """
     with open(filename, encoding='utf-8') as f:
         def split_line(root, line):
             parts = line.strip().split(split)
-            if len(parts) > 2:
-                raise Exception(
-                    "incorrect line format for file: {}".format(filename))
+            if (len(parts) != 2) and (len(parts) != 4):
+                raise Exception(f"incorrect line format for file: {filename}")
+            text_idx = 1 if len(parts) == 2 else 3
             path = os.path.join(root, parts[0])
-            text = parts[1]
+            text = parts[text_idx]
             return path,text
         filepaths_and_text = [split_line(dataset_path, line) for line in f]
     return filepaths_and_text
