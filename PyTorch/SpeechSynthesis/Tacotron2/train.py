@@ -124,9 +124,9 @@ def parse_args(parser):
 
     # audio parameters
     audio = parser.add_argument_group('audio parameters')
-    audio.add_argument('--max-wav-value', default=32768.0, type=float,
+    audio.add_argument('--max-wav-value', default=1.0, type=float,
                        help='Maximum audiowave value')
-    audio.add_argument('--sampling-rate', default=22050, type=int,
+    audio.add_argument('--sampling-rate', default=16000, type=int,
                        help='Sampling rate')
     audio.add_argument('--filter-length', default=1024, type=int,
                        help='Filter length')
@@ -403,7 +403,7 @@ def main():
     if args.resume_from_last:
         args.checkpoint_path = get_last_checkpoint_filename(args.output, model_name)
 
-    if args.checkpoint_path is not "":
+    if args.checkpoint_path != "":
         load_checkpoint(model, optimizer, start_epoch, model_config,
                         args.amp, args.checkpoint_path, local_rank)
 
