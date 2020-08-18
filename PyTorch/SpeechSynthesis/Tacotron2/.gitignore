@@ -1,4 +1,7 @@
 __pycache__/
 /checkpoints/
 /output/
-nvlog.json
+nvlog.json*
+LJSpeech-1.1/
+Voituk_Narrative/
+runs/
