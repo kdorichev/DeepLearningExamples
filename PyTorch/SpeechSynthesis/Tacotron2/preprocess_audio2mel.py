@@ -17,9 +17,9 @@ def parse_args(parser):
     parser.add_argument('--text-cleaners', nargs='*',
                         default=['russian_cleaner'], type=str,
                         help='Type of text cleaners for input text')
-    parser.add_argument('--max-wav-value', default=32768.0, type=float,
+    parser.add_argument('--max-wav-value', default=1.0, type=float,
                         help='Maximum audiowave value')
-    parser.add_argument('--sampling-rate', default=22050, type=int,
+    parser.add_argument('--sampling-rate', default=16000, type=int,
                         help='Sampling rate')
     parser.add_argument('--filter-length', default=1024, type=int,
                         help='Filter length')
@@ -33,7 +33,7 @@ def parse_args(parser):
                         help='Maximum mel frequency')
     parser.add_argument('--n-mel-channels', default=80, type=int,
                         help='Number of bins in mel-spectrograms')
-    parser.add_argument('--load-mel-from-disk', default=True, type=bool,
+    parser.add_argument('--load-mel-from-disk', action='store_true', default=False, 
                         help='To load pre-calculated mels from disk')
 
     return parser
@@ -43,13 +43,11 @@ def audio2mel(dataset_path, audiopaths_and_text, melpaths_and_text, args):
 
     melpaths_and_text_list = load_filepaths_and_text(dataset_path, melpaths_and_text)
     audiopaths_and_text_list = load_filepaths_and_text(dataset_path, audiopaths_and_text)
-
     data_loader = TextMelLoader(dataset_path, audiopaths_and_text, args)
 
     for i in range(len(melpaths_and_text_list)):
         if i%100 == 0:
             print("done", i, "/", len(melpaths_and_text_list))
-
         mel = data_loader.get_mel(audiopaths_and_text_list[i][0])
         torch.save(mel, melpaths_and_text_list[i][0])
 
@@ -58,7 +56,6 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch Tacotron 2 Training')
     parser = parse_args(parser)
     args = parser.parse_args()
-    args.load_mel_from_disk = True
 
     audio2mel(args.dataset_path, args.wav_files, args.mel_files, args)
 
