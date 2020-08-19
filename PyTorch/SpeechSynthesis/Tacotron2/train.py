@@ -556,6 +556,9 @@ def main():
             DLLogger.flush()
 
     # End of training
+    save_checkpoint(model, optimizer, epoch, model_config,
+                    args.amp, args.output, args.model_name,
+                    local_rank, world_size)
     torch.cuda.synchronize()
     run_stop_time = time.perf_counter()
     run_time = run_stop_time - run_start_time
