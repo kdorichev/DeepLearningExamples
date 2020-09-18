@@ -28,9 +28,8 @@
 import argparse
 
 def parse_waveglow_args(parent, add_help=False):
-    """
-    Parse commandline arguments.
-    """
+    """Parse commandline arguments."""
+
     parser = argparse.ArgumentParser(parents=[parent], add_help=add_help, allow_abbrev=False)
 
     # misc parameters

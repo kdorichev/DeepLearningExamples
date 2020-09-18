@@ -77,7 +77,7 @@ def main():
         DLLogger.log(step="PARAMETER", data={k:v})
     DLLogger.log(step="PARAMETER", data={'model_name':'Tacotron2_PyT'})
 
-    model = load_and_setup_model(args.model_name, parser, None, args.amp_run,
+    model = load_and_setup_model(args.model_name, parser, checkpoint=None, args.amp_run,
                                  forward_is_infer=True)
 
     if args.model_name == "Tacotron2":

@@ -62,9 +62,25 @@ def init_bn(module):
         init_bn(child)
 
 
-def get_model(model_name, model_config, cpu_run,
-              uniform_initialize_bn_weight=False, forward_is_infer=False):
-    """ Code chooses a model based on name"""
+def get_model(model_name: str, model_config: dict, cpu_run: bool,
+              uniform_initialize_bn_weight: bool=False,
+              forward_is_infer: bool=False):
+    """Return a model based on `model_name` defined by `model_config`.
+
+    Args:
+        model_name (str): One of the 'Tacotron2' or 'WaveGlow'.
+        model_config (dict): [description]
+        cpu_run (bool): Run on CPU (True) or GPU (False).
+        uniform_initialize_bn_weight (bool, optional): [description]. Defaults to False.
+        forward_is_infer (bool, optional): [description]. Defaults to False.
+
+    Raises:
+        NotImplementedError: [description]
+
+    Returns:
+        [type]: [description]
+    """
+    
     model = None
     if model_name == 'Tacotron2':
         if forward_is_infer:

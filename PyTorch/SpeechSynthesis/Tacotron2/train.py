@@ -181,8 +181,9 @@ def init_distributed(args, world_size, rank, group_name):
     print("Done initializing distributed")
 
 
-def save_checkpoint(model, optimizer, epoch, config, amp_run, output_dir, model_name,
-                    local_rank, world_size):
+def save_checkpoint(model, optimizer, epoch: int, config: dict, amp_run: bool, 
+                    output_dir: str, model_name: str,
+                    local_rank: int, world_size: int):
 
     random_rng_state = torch.random.get_rng_state().cuda()
     cuda_rng_state = torch.cuda.get_rng_state(local_rank).cuda()
@@ -210,16 +211,14 @@ def save_checkpoint(model, optimizer, epoch, config, amp_run, output_dir, model_
         if amp_run:
             checkpoint['amp'] = amp.state_dict()
 
-        checkpoint_filename = "checkpoint_{}_{}.pt".format(model_name, epoch)
-        checkpoint_path = os.path.join(
-            output_dir, checkpoint_filename)
+        checkpoint_filename = f"checkpoint_{model_name}_{epoch}.pt"
+        checkpoint_path = os.path.join(output_dir, checkpoint_filename)
         print("Saving model and optimizer state at epoch {} to {}".format(
             epoch, checkpoint_path))
         torch.save(checkpoint, checkpoint_path)
 
         symlink_src = checkpoint_filename
-        symlink_dst = os.path.join(
-            output_dir, "checkpoint_{}_last.pt".format(model_name))
+        symlink_dst = os.path.join(output_dir, f"checkpoint_{model_name}_last.pt")
         if os.path.exists(symlink_dst) and os.path.islink(symlink_dst):
             print("|||| Updating symlink", symlink_dst, "to point to", symlink_src)
             os.remove(symlink_dst)
@@ -377,9 +376,7 @@ def main():
     run_start_time = time.perf_counter()
 
     model_config = models.get_model_config(model_name, args)
-    model = models.get_model(
-        model_name, model_config,
-        cpu_run=False,
+    model = models.get_model(model_name, model_config, cpu_run=False,
         uniform_initialize_bn_weight=not args.disable_uniform_initialize_bn_weight)
 
     if not args.amp and distributed_run:
