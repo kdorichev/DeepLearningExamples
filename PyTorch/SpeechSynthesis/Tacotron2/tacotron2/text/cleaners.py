@@ -1,8 +1,3 @@
-__all__ = ['collapse_whitespace', 'lowercase', 'check_no_numbers', 'remove_specials', 'purge_dots',
-           'expand_abbreviations', 'unify_dash_hyphen', 'rm_quot_marks', 'basic_cleaner',
-           'russian_cleaner', 'russian_cleaner2']
-
-# Cell
 import re
 from typing import Tuple
 
@@ -28,7 +23,19 @@ def check_no_numbers(text: str) -> list:
 _specials = [(re.compile(f'{x[0]}'), x[1]) for x in [
     (r'\(?\d\d[:.]\d\d\)?', ''),  # timestamps
     (r'!\.{1,}', '!'), # !. -> !
-    (r'\?\.{1,}', '?'),quot
+    (r'\?\.{1,}', '?'),# ?. -> ?
+    (r'\/', ''),
+    (r'[\*\_]', ''),
+    (r'[\(\)]', '')
+    ]]
+
+# Cell
+def remove_specials(text: str, purge_digits: bool=None) -> str:
+    "Replace predefined in `_specials` sequence of characters"
+
+    for regex, replacement in _specials:
+        text = re.sub(regex, replacement, text)
+    if purge_digits:
         text = re.sub(r'\d', '', text)
     return text
 
@@ -48,7 +55,7 @@ _abbreviations = [(re.compile(f'\\b{x[0]}', re.IGNORECASE), x[1]) for x in [
   (r'т\.к\.', 'так как'),
   (r'и т\.д\.', 'и так далее.'),
   (r'и т\.п\.', 'и тому подобное.')
-]]
+]]runs/09-18/
 
 # Cell
 def expand_abbreviations(text: str) -> str:
@@ -66,12 +73,43 @@ def unify_dash_hyphen(text: str) -> str:
     text = re.sub('[\u2010\u2011]', '\u002d', text)  # hyphen, non-breaking hyphen
     text = re.sub('\s*?(\u2013)\s*?',' \g<1> ',text)
     return text
-
-# Cell
-def rm_quot_marks(text: str) -> str:
+    # text = lowercase(text)_marks(text: str) -> str:
     """Remove quotation marks from `text`."""
     # \u0022\u0027\u00ab\u00bb\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u2039\u203a\u276e\u276f\u275b\u275c\u275d\u275e\u275f\u2760\u2e42\u301d\u301e\u301f
     return re.sub(r'["\'«»‘’‚‛“”„‟‹›❮❯❛❜❝❞❟❠]','',text)
+
+
+# Cell
+def basic_cleaner(text: str) -> str:
+    "Basic pipeline: lowercase and collapse whitespaces."
+    text = lowercase(text)
+    text = collapse_whitespace(text)
+    return text
+
+# Cell
+def russian_cleaner(text, purge_digits=True, _purge_dots=False):
+    "Pipeline for cleaning Russian text."
+    # text = lowercase(text)
+    text = expand_abbreviations(text)
+    text = remove_specials(text, purge_digits=purge_digits)
+    text = purge_dots(text,purgedots=_purge_dots)
+    text = unify_dash_hyphen(text)
+    text = rm_quot_marks(text)
+    text = collapse_whitespace(text)
+    return text
+
+# Cell
+def russian_cleaner2(text, purge_digits=True, _purge_dots=False):
+    "Pipeline for cleaning and lowercase Russian text."
+
+    return russian_cleaner(lowercase(text), purge_digits, _purge_dots)      letters1[j] = letters1[j].upper()
+                        letters2[j] = letters2[j].upper()
+                        is_equal -= 1
+        words1[i], words2[i] = ''.join(letters1), ''.join(letters2)
+        text1 = text1 + " " + words1[i]
+        text2 = text2 + " " +  words2[i]
+
+    return is_equal == 1, text1[1:], text2[1:]
 
 # Cell
 def basic_cleaner(text: str) -> str:
