@@ -1,5 +1,11 @@
+__all__ = ['collapse_whitespace', 'lowercase', 'check_no_numbers', 'remove_specials', 'purge_dots',
+           'expand_abbreviations', 'unify_dash_hyphen', 'rm_quot_marks', 'basic_cleaner',
+           'russian_cleaner', 'russian_cleaner2']
+
+# Cell
 import re
 from typing import Tuple
+
 
 # Cell
 def collapse_whitespace(text: str) -> str:
@@ -73,11 +79,14 @@ def unify_dash_hyphen(text: str) -> str:
     text = re.sub('[\u2010\u2011]', '\u002d', text)  # hyphen, non-breaking hyphen
     text = re.sub('\s*?(\u2013)\s*?',' \g<1> ',text)
     return text
-    # text = lowercase(text)_marks(text: str) -> str:
+
+# Cell
+def rm_quot_marks(text: str) -> str:
     """Remove quotation marks from `text`."""
     # \u0022\u0027\u00ab\u00bb\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u2039\u203a\u276e\u276f\u275b\u275c\u275d\u275e\u275f\u2760\u2e42\u301d\u301e\u301f
     return re.sub(r'["\'«»‘’‚‛“”„‟‹›❮❯❛❜❝❞❟❠]','',text)
 
+<<<<<<< HEAD
 
 # Cell
 def basic_cleaner(text: str) -> str:
@@ -103,4 +112,3 @@ def russian_cleaner2(text, purge_digits=True, _purge_dots=False):
     "Pipeline for cleaning and lowercase Russian text."
 
     return russian_cleaner(lowercase(text), purge_digits, _purge_dots)
-
