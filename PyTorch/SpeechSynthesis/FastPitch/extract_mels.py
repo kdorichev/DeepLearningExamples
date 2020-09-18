@@ -237,16 +237,18 @@ def main():
             for j, mel in enumerate(out_mels_postnet):
                 fpath = Path(args.dataset_path, 'mels_teacher', fnames[j] + '.pt')
                 torch.save(mel[:, :mel_lens[j]].cpu(), fpath)
+
         if args.extract_attentions:
             for j, ali in enumerate(alignments):
                 ali = ali[:mel_lens[j],:text_lens[j]]
                 fpath = Path(args.dataset_path, 'attentions', fnames[j] + '.pt')
                 torch.save(ali.cpu(), fpath)
+
         durations = []
         if args.extract_durations:
             for j, ali in enumerate(alignments):
                 text_len = text_lens[j]
-                ali = ali[:mel_lens[j],:text_len]
+                ali = ali[:mel_lens[j], :text_len]
                 dur = torch.histc(torch.argmax(ali, dim=1), min=0,
                                   max=text_len-1, bins=text_len)
                 durations.append(dur)

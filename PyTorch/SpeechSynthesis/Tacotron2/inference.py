@@ -105,7 +105,22 @@ def unwrap_distributed(state_dict):
     return new_state_dict
 
 
-def load_and_setup_model(model_name, parser, checkpoint, fp16_run, cpu_run, forward_is_infer=False):
+def load_and_setup_model(model_name: str, parser: ArgumentParser, checkpoint, 
+                         fp16_run: bool, cpu_run: bool, forward_is_infer: bool=False):
+    """[summary]
+
+    Args:
+        model_name (str): One of the 'Tacotron2' or 'WaveGlow'.
+        parser (ArgumentParser): [description]
+        checkpoint ([type]): [description]
+        fp16_run (bool): [description]
+        cpu_run (bool): [description]
+        forward_is_infer (bool, optional): [description]. Defaults to False.
+
+    Returns:
+        [type]: [description]
+    """
+    
     model_parser = models.parse_model_args(model_name, parser, add_help=False)
     model_args, _ = model_parser.parse_known_args()
     model_config = models.get_model_config(model_name, model_args)
