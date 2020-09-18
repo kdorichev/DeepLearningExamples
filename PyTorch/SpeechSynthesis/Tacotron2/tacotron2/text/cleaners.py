@@ -55,7 +55,7 @@ _abbreviations = [(re.compile(f'\\b{x[0]}', re.IGNORECASE), x[1]) for x in [
   (r'т\.к\.', 'так как'),
   (r'и т\.д\.', 'и так далее.'),
   (r'и т\.п\.', 'и тому подобное.')
-]]runs/09-18/
+]]
 
 # Cell
 def expand_abbreviations(text: str) -> str:
@@ -102,36 +102,5 @@ def russian_cleaner(text, purge_digits=True, _purge_dots=False):
 def russian_cleaner2(text, purge_digits=True, _purge_dots=False):
     "Pipeline for cleaning and lowercase Russian text."
 
-    return russian_cleaner(lowercase(text), purge_digits, _purge_dots)      letters1[j] = letters1[j].upper()
-                        letters2[j] = letters2[j].upper()
-                        is_equal -= 1
-        words1[i], words2[i] = ''.join(letters1), ''.join(letters2)
-        text1 = text1 + " " + words1[i]
-        text2 = text2 + " " +  words2[i]
-
-    return is_equal == 1, text1[1:], text2[1:]
-
-# Cell
-def basic_cleaner(text: str) -> str:
-    "Basic pipeline: lowercase and collapse whitespaces."
-    text = lowercase(text)
-    text = collapse_whitespace(text)
-    return text
-
-# Cell
-def russian_cleaner(text, purge_digits=True, _purge_dots=False):
-    "Pipeline for cleaning Russian text."
-    # text = lowercase(text)
-    text = expand_abbreviations(text)
-    text = remove_specials(text, purge_digits=purge_digits)
-    text = purge_dots(text,purgedots=_purge_dots)
-    text = unify_dash_hyphen(text)
-    text = rm_quot_marks(text)
-    text = collapse_whitespace(text)
-    return text
-
-# Cell
-def russian_cleaner2(text, purge_digits=True, _purge_dots=False):
-    "Pipeline for cleaning and lowercase Russian text."
-
     return russian_cleaner(lowercase(text), purge_digits, _purge_dots)
+
