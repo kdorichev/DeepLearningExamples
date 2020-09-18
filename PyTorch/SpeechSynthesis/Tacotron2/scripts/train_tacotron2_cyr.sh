@@ -1,0 +1,2 @@
+python train.py -o runs/09-18 -d Voituk_Narrative --amp --cudnn-enable --text-cleaners 'russian_cleaner2' --training-files filelists/mel_dur_pitch_train_filelist.txt --validation-files filelists/mel_dur_pitch_valid_filelist.txt -m Tacotron2 --epochs 1500 --epochs-per-checkpoint 100 -lr 0.001 -bs 24 --load-mel-from-disk 
+# --chechpoint-path runs/test3 --resume-from-last --load-mel-from-disk --sampling-rate 16000 -lr 1e-3 -bs 16
