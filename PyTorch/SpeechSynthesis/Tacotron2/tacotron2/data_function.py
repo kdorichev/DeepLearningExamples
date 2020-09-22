@@ -54,7 +54,15 @@ class TextMelLoader(torch.utils.data.Dataset):
         random.shuffle(self.audiopaths_and_text)
 
     def get_mel_text_pair(self, audiopath_and_text):
-        # separate filename and text
+        """Return a tuple text and mel spectrogram
+
+        Args:
+            audiopath_and_text ([type]): [description]
+
+        Returns:
+            Tuple: (text, mel, len_text)
+        """
+
         audiopath, text = audiopath_and_text[0], audiopath_and_text[1]
         len_text = len(text)
         text = self.get_text(text)
@@ -64,7 +72,7 @@ class TextMelLoader(torch.utils.data.Dataset):
     def get_mel(self, filename):
         if not self.load_mel_from_disk:
             audio, sampling_rate = load_wav_to_torch(filename, self.stft.sampling_rate)
-            
+
             if sampling_rate != self.stft.sampling_rate:
                 raise ValueError(f"{sampling_rate} SR doesn't match target {self.stft.sampling_rate} SR")
             audio_norm = audio / self.max_wav_value
