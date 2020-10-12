@@ -31,6 +31,7 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 from librosa.core import load
+from librosa.effects import trim
 
 def get_mask_from_lengths(lengths):
     max_len = torch.max(lengths).item()
@@ -50,7 +51,7 @@ def load_wav_to_torch(full_path: str, sr: Optional[int] = 22050) -> Tuple[torch.
     """
 
     data, sampling_rate = load(full_path, sr)
-    return torch.from_numpy(data), sampling_rate
+    return torch.from_numpy(trim(data)), sampling_rate
 
 
 def load_filepaths_and_text(dataset_path: str, filename: str, split="|") -> list:
