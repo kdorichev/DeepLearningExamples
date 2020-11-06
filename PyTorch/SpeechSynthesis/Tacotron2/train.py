@@ -33,13 +33,10 @@ from contextlib import contextmanager
 from collections import OrderedDict
 import torch
 from torch.utils.data import DataLoader
-# unused from torch.autograd import Variable
-# unused from torch.nn.parameter import Parameter
 
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 
-# unused: from scipy.io.wavfile import write as write_wav
 from apex.parallel import DistributedDataParallel as DDP
 
 import models
@@ -47,7 +44,6 @@ import loss_functions
 import data_functions
 
 import dllogger as DLLogger
-# unused from dllogger import StdOutBackend, JSONStreamBackend, Verbosity
 from common.log_helper import init_dllogger, TBLogger, unique_dllogger_fpath
 
 from apex import amp
@@ -140,8 +136,6 @@ def parse_args(parser):
                        help='Maximum mel frequency')
 
     distributed = parser.add_argument_group('distributed setup')
-    # distributed.add_argument('--distributed-run', default=True, type=bool,
-    #                          help='enable distributed run')
     distributed.add_argument('--rank', default=0, type=int,
                              help='Rank of the process, do not set! Done by multiproc module')
     distributed.add_argument('--world-size', default=1, type=int,
@@ -295,7 +289,7 @@ def validate(model, criterion, valset, epoch, batch_iter, batch_size,
                 reduced_num_items = num_items.item()
             val_loss += reduced_val_loss
 
-            torch.cuda.synchronize()
+       data_loader     torch.cuda.synchronize()
             iter_stop_time = time.perf_counter()
             iter_time = iter_stop_time - iter_start_time
 
