@@ -5,7 +5,6 @@ import re
 import numpy as np
 
 from tensorboardX import SummaryWriter
-
 import dllogger as DLLogger
 from dllogger import StdOutBackend, JSONStreamBackend, Verbosity
 
@@ -16,7 +15,7 @@ def unique_dllogger_fpath(log_fpath):
         return log_fpath
 
     # Avoid overwriting old logs
-    saved = sorted([int(re.search('\.(\d+)', f).group(1))
+    saved = sorted([int(re.search(r'\.(\d+)', f).group(1))
                     for f in glob.glob(f'{log_fpath}.*')])
 
     log_num = (saved[-1] if saved else 0) + 1
@@ -119,3 +118,24 @@ class TBLogger(object):
             for stat in ('max', 'min', 'mean'):
                 self.log_value(step, f'grad_{stat}', getattr(np, stat)(norms),
                                stat=stat)
+
+    def log_image(self, tag: str, img_tensor,
+                  walltime: float = None, dataformats: str = 'CHW'):
+        """Add image to log via tensorboardX.
+
+        Args:
+            tag (str): Data identifier
+            img_tensor (Union[torch.Tensor, numpy.array]): An uint8 or float Tensor
+                of shape [channel, height, width] where channel is 1, 3, or 4.
+                The elements in img_tensor can either have values in [0, 1] (float32)
+                or [0, 255] (uint8). Users are responsible to scale the data in
+                the correct range/type.
+            walltime (float, optional): Optional override default walltime (time.time()) of event.
+                Defaults to None.
+            dataformats (str, optional): Specifies the meaning of each dimension of
+                the input tensor. Supported: CHW, HWC, HW. Defaults to 'CHW'.
+        """
+        if self.enabled:
+            self.summary_writer.add_image(tag, img_tensor, walltime=walltime,
+                                          dataformats=dataformats)
+
