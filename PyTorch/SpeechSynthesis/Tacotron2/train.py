@@ -119,14 +119,14 @@ def parse_args(parser):
                          default='filelists/ljs_audio_text_val_filelist.txt',
                          type=str, help='Path to validation filelist')
     dataset.add_argument('--text-cleaners', nargs='*',
-                         default=['english_cleaners'], type=str,
+                         default=['russian_cleaner2'], type=str,
                          help='Type of text cleaners for input text')
 
     # audio parameters
     audio = parser.add_argument_group('audio parameters')
     audio.add_argument('--max-wav-value', default=1.0, type=float,
                        help='Maximum audiowave value')
-    audio.add_argument('--sampling-rate', default=16000, type=int,
+    audio.add_argument('--sampling-rate', default=22050, type=int,
                        help='Sampling rate')
     audio.add_argument('--filter-length', default=1024, type=int,
                        help='Filter length')
@@ -471,15 +471,15 @@ def main():
                                  args.anneal_steps, args.anneal_factor, local_rank)
             new_lr = optimizer.param_groups[0]['lr']
             
-            # if new_lr != old_lr:
-            # dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
-            train_tblogger.log_value(iteration, 'lrate', new_lr)
-            # else:
-            #    dllog_lrate_change = None
+            if new_lr != old_lr:
+                dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
+                train_tblogger.log_value(iteration, 'lrate', new_lr)
+            else:
+                dllog_lrate_change = None
             
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
-
+            # print(x)
             y_pred = model(x)
             loss = criterion(y_pred, y)
             train_tblogger.log_value(iteration, 'loss', loss.item())

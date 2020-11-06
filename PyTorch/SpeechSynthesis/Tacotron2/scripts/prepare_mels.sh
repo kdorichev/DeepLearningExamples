@@ -6,12 +6,12 @@ DATADIR="Voituk_Narrative"
 FILELISTSDIR="filelists"
 
 #TESTLIST="$FILELISTSDIR/ljs_audio_text_test_filelist.txt"
-TRAINLIST="$FILELISTSDIR/Voituk_Narrative_train_filelist.txt"
-VALLIST="$FILELISTSDIR/Voituk_Narrative_valid_filelist.txt"
+TRAINLIST="$FILELISTSDIR/train_filelist.txt"
+VALLIST="$FILELISTSDIR/valid_filelist.txt"
 
 #TESTLIST_MEL="$FILELISTSDIR/ljs_mel_text_test_filelist.txt"
-TRAINLIST_MEL="$FILELISTSDIR/Voituk_Narrative_mel_dur_pitch_train_filelist.txt"
-VALLIST_MEL="$FILELISTSDIR/Voituk_Narrative_mel_dur_pitch_valid_filelist.txt"
+TRAINLIST_MEL="$FILELISTSDIR/mel_dur_pitch_train_filelist.txt"
+VALLIST_MEL="$FILELISTSDIR/mel_dur_pitch_valid_filelist.txt"
 
 mkdir -p "$DATADIR/mels"
 #if [ $(ls $DATADIR/mels | wc -l) -ne 13100 ]; then
