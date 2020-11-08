@@ -54,7 +54,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         random.shuffle(self.audiopaths_and_text)
 
     def get_mel_text_pair(self, audiopath_and_text):
-        """Return a tuple text and mel spectrogram
+        """Return a tuple text and mel spectrogram.
 
         Args:
             audiopath_and_text ([type]): [description]
@@ -100,13 +100,13 @@ class TextMelLoader(torch.utils.data.Dataset):
 
 
 class TextMelCollate():
-    """ Zero-pads model inputs and targets based on number of frames per setep
+    """ Zero-pads model inputs and targets based on number of frames per step.
     """
     def __init__(self, n_frames_per_step):
         self.n_frames_per_step = n_frames_per_step
 
     def __call__(self, batch):
-        """Collate's training batch from normalized text and mel-spectrogram
+        """Collate's training batch from normalized text and mel-spectrogram.
         PARAMS
         ------
         batch: [text_normalized, mel_normalized]
