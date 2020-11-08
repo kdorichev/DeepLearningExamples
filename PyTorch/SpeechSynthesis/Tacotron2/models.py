@@ -125,23 +125,23 @@ def get_model_config(model_name, args):
             encoder_n_convolutions=args.encoder_n_convolutions,
             encoder_embedding_dim=args.encoder_embedding_dim,
             # attention
-            attention_rnn_dim=args.attention_rnn_dim,
-            attention_dim=args.attention_dim,
+            attention_rnn_dim=args.attention_rnn_dim, # Number of units in attention LSTM
+            attention_dim=args.attention_dim, # Dimension of attention hidden representation
             # attention location
-            attention_location_n_filters=args.attention_location_n_filters,
-            attention_location_kernel_size=args.attention_location_kernel_size,
+            attention_location_n_filters=args.attention_location_n_filters, # Number of filters for location-sensitive attention
+            attention_location_kernel_size=args.attention_location_kernel_size, # Kernel size for location-sensitive attention
             # decoder
-            n_frames_per_step=args.n_frames_per_step,
-            decoder_rnn_dim=args.decoder_rnn_dim,
-            prenet_dim=args.prenet_dim,
-            max_decoder_steps=args.max_decoder_steps,
-            gate_threshold=args.gate_threshold,
-            p_attention_dropout=args.p_attention_dropout,
-            p_decoder_dropout=args.p_decoder_dropout,
+            n_frames_per_step=args.n_frames_per_step, # Number of frames processed per step
+            decoder_rnn_dim=args.decoder_rnn_dim, # Number of units in decoder LSTM
+            prenet_dim=args.prenet_dim,  # Number of ReLU units in prenet layers
+            max_decoder_steps=args.max_decoder_steps, # Maximum number of output mel spectrograms
+            gate_threshold=args.gate_threshold, # Probability threshold for stop token
+            p_attention_dropout=args.p_attention_dropout, # Dropout probability for attention LSTM
+            p_decoder_dropout=args.p_decoder_dropout, # Dropout probability for decoder LSTM
             # postnet
-            postnet_embedding_dim=args.postnet_embedding_dim,
-            postnet_kernel_size=args.postnet_kernel_size,
-            postnet_n_convolutions=args.postnet_n_convolutions,
+            postnet_embedding_dim=args.postnet_embedding_dim, # Postnet embedding dimension; def. 512
+            postnet_kernel_size=args.postnet_kernel_size, # Postnet kernel size; def. 5
+            postnet_n_convolutions=args.postnet_n_convolutions, # Number of postnet convolutions; def. 5
             decoder_no_early_stopping=args.decoder_no_early_stopping
         )
         return model_config
