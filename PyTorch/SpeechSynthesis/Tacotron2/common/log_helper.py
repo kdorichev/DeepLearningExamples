@@ -111,7 +111,13 @@ class TBLogger(object):
         for k, v in meta.items():
             self.log_value(step, k, v.item())
 
-    def log_grads(self, step, model):
+    def log_grads(self, step: int, model):
+        """Log max, min, mean gradients of the `model` at `step`.
+
+        Args:
+            step (int): Iteration number.
+            model (nn.Model): 
+        """
         if self.enabled:
             norms = [p.grad.norm().item() for p in model.parameters()
                      if p.grad is not None]

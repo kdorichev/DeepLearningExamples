@@ -54,7 +54,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         random.shuffle(self.audiopaths_and_text)
 
     def get_mel_text_pair(self, audiopath_and_text):
-        """Return a tuple text and mel spectrogram.
+        """Return a tuple (text, mel spectrogram, text length).
 
         Args:
             audiopath_and_text ([type]): [description]
@@ -106,7 +106,7 @@ class TextMelCollate():
         self.n_frames_per_step = n_frames_per_step
 
     def __call__(self, batch):
-        """Collate's training batch from normalized text and mel-spectrogram.
+        """Collate training batch from normalized text and mel-spectrogram.
         PARAMS
         ------
         batch: [text_normalized, mel_normalized]
@@ -147,6 +147,7 @@ class TextMelCollate():
         len_x = torch.Tensor(len_x)
         return text_padded, input_lengths, mel_padded, gate_padded, \
             output_lengths, len_x
+
 
 def batch_to_gpu(batch):
     text_padded, input_lengths, mel_padded, gate_padded, \
