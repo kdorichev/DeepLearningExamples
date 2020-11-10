@@ -118,8 +118,8 @@ def get_model_config(model_name, args):
             # audio
             n_mel_channels=args.n_mel_channels,
             # symbols
-            n_symbols=args.n_symbols,
-            symbols_embedding_dim=args.symbols_embedding_dim,
+            n_symbols=args.n_symbols, # Number of symbols in dictionary
+            symbols_embedding_dim=args.symbols_embedding_dim, # Input embedding dimension; 512
             # encoder
             encoder_kernel_size=args.encoder_kernel_size,
             encoder_n_convolutions=args.encoder_n_convolutions,
