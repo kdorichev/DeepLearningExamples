@@ -473,8 +473,16 @@ def main():
             
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
+            # x = (text_padded, input_lengths, mel_padded, max_len, output_lengths)
+            # y = (mel_padded, gate_padded)
             # print(x)
             y_pred = model(x)
+            # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
+            DLLogger.log(step=(epoch, i, num_batches), 
+                        data=OrderedDict([
+                        ('alignments shape', (y_pred[3]).shape),
+                        ('alignments', y_pred[3])
+                    ]))
             loss = criterion(y_pred, y)
             train_tblogger.log_value(iteration, 'loss', loss.item())
 
@@ -506,7 +514,7 @@ def main():
 
             optimizer.step()
 
-            torch.cuda.synchronize()
+            torch.cuda.synchronize() # Wait for all kernels in all streams on a CUDA device to complete
             iter_stop_time = time.perf_counter()
             iter_time = iter_stop_time - iter_start_time
             items_per_sec = reduced_num_items/iter_time
