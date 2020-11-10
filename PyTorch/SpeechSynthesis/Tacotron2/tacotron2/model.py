@@ -38,7 +38,8 @@ from common.utils import to_gpu, get_mask_from_lengths
 
 
 class LocationLayer(nn.Module):
-    def __init__(self, attention_n_filters, attention_kernel_size,
+    def __init__(self, attention_n_filters, 
+                 attention_kernel_size,
                  attention_dim):
         super(LocationLayer, self).__init__()
         padding = int((attention_kernel_size - 1) / 2)
@@ -117,7 +118,14 @@ class Attention(nn.Module):
 
 
 class Prenet(nn.Module):
+    """Two fully connected layers of 256 hidden ReLU units.
+    """
     def __init__(self, in_dim, sizes):
+        """
+        Args:
+            in_dim ([type]): n_mel_channels * n_frames_per_step
+            sizes ([type]): [prenet_dim, prenet_dim]
+        """
         super(Prenet, self).__init__()
         in_sizes = [in_dim] + sizes[:-1]
         self.layers = nn.ModuleList(
@@ -132,11 +140,16 @@ class Prenet(nn.Module):
 
 class Postnet(nn.Module):
     """Postnet
-        - Five 1-d convolution with 512 channels and kernel size 5
+        `postnet_n_convolutions` 1-d convolution with 
+        `postnet_embedding_dim` channels and 
+        `postnet_kernel_size` kernel size.
     """
-
-    def __init__(self, n_mel_channels, postnet_embedding_dim,
-                 postnet_kernel_size, postnet_n_convolutions):
+    def __init__(self, 
+                 n_mel_channels: int, # Number of bins in mel-spectrograms; def. 80
+                 postnet_embedding_dim: int, # Postnet embedding dimension; def. 512
+                 postnet_kernel_size: int, # Postnet kernel size; def. 5
+                 postnet_n_convolutions: int # Number of postnet convolutions; def. 5
+                 ):
         super(Postnet, self).__init__()
         self.convolutions = nn.ModuleList()
 
@@ -187,8 +200,11 @@ class Encoder(nn.Module):
         - Three 1-d convolution banks
         - Bidirectional LSTM
     """
-    def __init__(self, encoder_n_convolutions,
-                 encoder_embedding_dim, encoder_kernel_size):
+    def __init__(self, 
+                 encoder_n_convolutions, # Number of encoder convolutions; def. 3
+                 encoder_embedding_dim, # Encoder embedding dimension; def. 512
+                 encoder_kernel_size    # Encoder kernel size; def. 5
+                 ):
         super(Encoder, self).__init__()
 
         convolutions = []
@@ -401,7 +417,7 @@ class Decoder(nn.Module):
                decoder_hidden, decoder_cell, attention_weights,
                attention_weights_cum, attention_context, memory,
                processed_memory, mask):
-        """ Decoder step using stored states, attention and memory
+        """ Decoder step using stored states, attention and memory.
         PARAMS
         ------
         decoder_input: previous mel output
@@ -435,11 +451,8 @@ class Decoder(nn.Module):
         decoder_hidden = F.dropout(
             decoder_hidden, self.p_decoder_dropout, self.training)
 
-        decoder_hidden_attention_context = torch.cat(
-            (decoder_hidden, attention_context), dim=1)
-        decoder_output = self.linear_projection(
-            decoder_hidden_attention_context)
-
+        decoder_hidden_attention_context = torch.cat((decoder_hidden, attention_context), dim=1)
+        decoder_output = self.linear_projection(decoder_hidden_attention_context)
         gate_prediction = self.gate_layer(decoder_hidden_attention_context)
 
         return (decoder_output, gate_prediction, attention_hidden,
@@ -613,8 +626,8 @@ class Tacotron2(nn.Module):
         std = sqrt(2.0 / (n_symbols + symbols_embedding_dim))
         val = sqrt(3.0) * std  # uniform bounds for std
         self.embedding.weight.data.uniform_(-val, val)
-        self.encoder = Encoder(encoder_n_convolutions,
-                               encoder_embedding_dim,
+        self.encoder = Encoder(encoder_n_convolutions, # Number of encoder convolutions, def. 3
+                               encoder_embedding_dim, # Encoder embedding dimension, def.512
                                encoder_kernel_size)
         self.decoder = Decoder(n_mel_channels, n_frames_per_step,
                                encoder_embedding_dim, attention_dim,
@@ -643,7 +656,17 @@ class Tacotron2(nn.Module):
             (text_padded, input_lengths, mel_padded, max_len, output_lengths),
             (mel_padded, gate_padded))
 
-    def parse_output(self, outputs, output_lengths):
+
+    def parse_output(self, outputs: list, output_lengths: torch.Tensor) -> list:
+        """Fill `mel_outputs`, `mel_outputs_postnet`, `gate_outputs` with 0.0/1e3 at tails.
+
+        Args:
+            outputs (list): [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
+            output_lengths (torch.Tensor): [description]
+
+        Returns:
+            [list]: `outputs` filled with 0.0/1e3 according to mask.
+        """
         # type: (List[Tensor], Tensor) -> List[Tensor]
         if self.mask_padding and output_lengths is not None:
             mask = get_mask_from_lengths(output_lengths)
@@ -655,6 +678,7 @@ class Tacotron2(nn.Module):
             outputs[2].masked_fill_(mask[:, 0, :], 1e3)  # gate energies
 
         return outputs
+
 
     def forward(self, inputs):
         inputs, input_lengths, targets, max_len, output_lengths = inputs
