@@ -28,12 +28,26 @@
 import os
 from typing import Optional, Tuple
 
-import numpy as np
 import torch
 from librosa.core import load
 from librosa.effects import trim
 
-def get_mask_from_lengths(lengths):
+def get_mask_from_lengths(lengths: torch.Tensor) -> torch.Tensor:
+    """Create a boolean mask from a `lengths` tensor.
+
+    Example:
+        lengths = torch.tensor((4,6,2))
+        get_mask_from_lengths(lengths)
+
+        tensor([[False, False, False, False,  True,  True],
+                [False, False, False, False, False, False],
+                [False, False,  True,  True,  True,  True]])
+    Args:
+        lengths (torch.Tensor)
+
+    Returns:
+        [torch.Tensor]: a boolean mask of size len(lengths) x lengths.max()
+    """
     max_len = torch.max(lengths).item()
     ids = torch.arange(0, max_len, device=lengths.device, dtype=lengths.dtype)
     mask = (ids < lengths.unsqueeze(1)).byte()
