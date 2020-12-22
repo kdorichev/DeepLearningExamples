@@ -68,7 +68,7 @@ def load_wav_to_torch(full_path: str, sr: Optional[int] = 22050) -> Tuple[torch.
     return torch.from_numpy(trim(data)[0]), sampling_rate
 
 
-def load_filepaths_and_text(dataset_path: str, filename: str, split="|") -> list:
+def load_filepaths_and_text(dataset_path: str, filename: str, split_char="|") -> list:
     """Return a list of tuples: (path to mel file, text).
     `filename` has either 2 or 4 fields, like:
 
@@ -87,7 +87,7 @@ def load_filepaths_and_text(dataset_path: str, filename: str, split="|") -> list
         list of tuples: (path to mel file, text)
     """
     def split_line(root, line):
-        parts = line.strip().split(split)
+        parts = line.strip().split(split_char)
         if (len(parts) != 2) and (len(parts) != 4):
             raise Exception(f"incorrect line format for file: {filename}")
         text_idx = 1 if len(parts) == 2 else 3
