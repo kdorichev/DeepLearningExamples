@@ -29,6 +29,7 @@ from tacotron2.text import text_to_sequence
 import models
 import torch
 import argparse
+from argparse import ArgumentParser
 import numpy as np
 from scipy.io.wavfile import write
 import matplotlib
@@ -124,6 +125,7 @@ def load_and_setup_model(model_name: str, parser: ArgumentParser, checkpoint,
     model_parser = models.parse_model_args(model_name, parser, add_help=False)
     model_args, _ = model_parser.parse_known_args()
     model_config = models.get_model_config(model_name, model_args)
+    # print(model_config)
     model = models.get_model(model_name, model_config, cpu_run=cpu_run,
                              forward_is_infer=forward_is_infer)
 
@@ -170,7 +172,7 @@ def prepare_input_sequence(texts, cpu_run=False):
     d = []
     for i,text in enumerate(texts):
         d.append(torch.IntTensor(
-            text_to_sequence(text, ['english_cleaners'])[:]))
+            text_to_sequence(text, ['russian_cleaner2'])[:]))
 
     text_padded, input_lengths = pad_sequences(d)
     if not cpu_run:
@@ -209,7 +211,7 @@ def main():
         description='PyTorch Tacotron 2 Inference')
     parser = parse_args(parser)
     args, _ = parser.parse_known_args()
-
+#    print(args) #FIXME
     DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT,
                                               args.output+'/'+args.log_file),
                             StdOutBackend(Verbosity.VERBOSE)])
@@ -219,13 +221,18 @@ def main():
 
     tacotron2 = load_and_setup_model('Tacotron2', parser, args.tacotron2,
                                      args.fp16, args.cpu, forward_is_infer=True)
+#    print('Loaded Tacotron2 model')
     waveglow = load_and_setup_model('WaveGlow', parser, args.waveglow,
                                     args.fp16, args.cpu, forward_is_infer=True)
+    # print('Loaded WaveGlow model')
+    # print(waveglow)
     denoiser = Denoiser(waveglow)
+    # print(denoiser)
     if not args.cpu:
         denoiser.cuda()
 
     jitted_tacotron2 = torch.jit.script(tacotron2)
+    # print(jitted_tacotron2.code)
 
     texts = []
     try:
@@ -249,6 +256,9 @@ def main():
     measurements = {}
 
     sequences_padded, input_lengths = prepare_input_sequence(texts, args.cpu)
+    print(texts) #FIXME
+    #from tacotron2.text import sequence_to_text
+    print(sequences_padded, input_lengths)
 
     with torch.no_grad(), MeasureTime(measurements, "tacotron2_time", args.cpu):
         mel, mel_lengths, alignments = jitted_tacotron2(sequences_padded, input_lengths)

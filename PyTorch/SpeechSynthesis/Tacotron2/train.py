@@ -36,6 +36,7 @@ from torch.utils.data import DataLoader
 
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
+from torchvision.utils import make_grid
 
 from apex.parallel import DistributedDataParallel as DDP
 
@@ -49,7 +50,7 @@ from common.log_helper import init_dllogger, TBLogger, unique_dllogger_fpath
 from apex import amp
 amp.lists.functional_overrides.FP32_FUNCS.remove('softmax')
 amp.lists.functional_overrides.FP16_FUNCS.append('softmax')
-
+from tacotron2.text import *
 
 def parse_args(parser):
     """
@@ -109,10 +110,10 @@ def parse_args(parser):
     dataset.add_argument('--load-mel-from-disk', action='store_true',
                          help='Loads mel spectrograms from disk instead of computing them on the fly')
     dataset.add_argument('--training-files',
-                         default='filelists/ljs_audio_text_train_filelist.txt',
+                         default='filelists/train_filelist.txt',
                          type=str, help='Path to training filelist')
     dataset.add_argument('--validation-files',
-                         default='filelists/ljs_audio_text_val_filelist.txt',
+                         default='filelists/valid_filelist.txt',
                          type=str, help='Path to validation filelist')
     dataset.add_argument('--text-cleaners', nargs='*',
                          default=['russian_cleaner2'], type=str,
@@ -289,7 +290,7 @@ def validate(model, criterion, valset, epoch, batch_iter, batch_size,
                 reduced_num_items = num_items.item()
             val_loss += reduced_val_loss
 
-       data_loader     torch.cuda.synchronize()
+            torch.cuda.synchronize()
             iter_stop_time = time.perf_counter()
             iter_time = iter_stop_time - iter_start_time
 
@@ -325,6 +326,22 @@ def adjust_learning_rate(iteration, epoch, optimizer, learning_rate,
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+
+def log_y_pred(y_pred: list, iteration: int, path: str, tblogger):
+    """Log the components of `y_pred` onto disk and tensorboard.
+    """
+    print((y_pred[0]).shape, len(y_pred[1]), len(y_pred[2]))
+    return
+    names = "mel_outputs mel_outputs_postnet gate_outputs alignments".split()
+    for i, t in enumerate(y_pred):
+        torch.save(t, os.path.join(path, f'{names[i]}_{iteration}.pt'))
+        if len(t.shape) != 2: # Not gate_outputs
+            t = t.detach()  # B, H, W
+            t = t.float().unsqueeze(dim=1)  # B, C, H, W
+            t = make_grid(t, scale_each=True, pad_value=1, nrow=5, normalize=True) #.transpose(0,1)  # 3, H, W
+            tblogger.log_image(names[i], t, global_step=iteration, dataformats='CHW')
+    return
 
 
 def main():
@@ -414,7 +431,7 @@ def main():
     if distributed_run:
         train_sampler, shuffle = DistributedSampler(trainset), False
     else:
-        train_sampler, shuffle = None, True
+        train_sampler, shuffle = None, True  #FIXME True --> False for test purposes
 
     train_loader = DataLoader(trainset, num_workers=1, shuffle=shuffle,
                               sampler=train_sampler,
@@ -464,25 +481,23 @@ def main():
             adjust_learning_rate(iteration, epoch, optimizer, args.learning_rate,
                                  args.anneal_steps, args.anneal_factor, local_rank)
             new_lr = optimizer.param_groups[0]['lr']
+            train_tblogger.log_value(iteration, 'lrate', new_lr)
             
             if new_lr != old_lr:
                 dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
-                train_tblogger.log_value(iteration, 'lrate', new_lr)
+            #    train_tblogger.log_value(iteration, 'lrate', new_lr)
             else:
                 dllog_lrate_change = None
             
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
-            # x = (text_padded, input_lengths, mel_padded, max_len, output_lengths)
-            # y = (mel_padded, gate_padded)
-            # print(x)
+
             y_pred = model(x)
-            # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
-            DLLogger.log(step=(epoch, i, num_batches), 
-                        data=OrderedDict([
-                        ('alignments shape', (y_pred[3]).shape),
-                        ('alignments', y_pred[3])
-                    ]))
+
+            #FIXME Temporary output below
+            if i == 0:
+                log_y_pred(y_pred, iteration, args.output, train_tblogger)
+
             loss = criterion(y_pred, y)
             train_tblogger.log_value(iteration, 'loss', loss.item())
 

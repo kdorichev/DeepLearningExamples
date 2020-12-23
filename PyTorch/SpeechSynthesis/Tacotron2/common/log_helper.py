@@ -125,7 +125,7 @@ class TBLogger(object):
                 self.log_value(step, f'grad_{stat}', getattr(np, stat)(norms),
                                stat=stat)
 
-    def log_image(self, tag: str, img_tensor,
+    def log_image(self, tag: str, img_tensor, global_step = None,
                   walltime: float = None, dataformats: str = 'CHW'):
         """Add image to log via tensorboardX.
 
@@ -142,6 +142,6 @@ class TBLogger(object):
                 the input tensor. Supported: CHW, HWC, HW. Defaults to 'CHW'.
         """
         if self.enabled:
-            self.summary_writer.add_image(tag, img_tensor, walltime=walltime,
-                                          dataformats=dataformats)
+            self.summary_writer.add_image(tag, img_tensor, global_step = global_step, 
+                    walltime=walltime, dataformats=dataformats)
 

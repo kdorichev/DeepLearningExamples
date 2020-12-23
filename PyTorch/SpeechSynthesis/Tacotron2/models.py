@@ -86,6 +86,7 @@ def get_model(model_name: str, model_config: dict, cpu_run: bool,
         if forward_is_infer:
             class Tacotron2__forward_is_infer(Tacotron2):
                 def forward(self, inputs, input_lengths):
+                    print(input_lengths) #FIXME
                     return self.infer(inputs, input_lengths)
             model = Tacotron2__forward_is_infer(**model_config)
         else:
