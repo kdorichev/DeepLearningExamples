@@ -368,7 +368,7 @@ def main():
         init_dllogger(log_fpath)
     else:
         init_dllogger(dummy=True)
-        
+
     for k, v in vars(args).items():
         DLLogger.log(step="PARAMETER", data={k:v})
     DLLogger.log(step="PARAMETER", data={'model_name':'Tacotron2_PyT'})
@@ -452,7 +452,7 @@ def main():
 
     train_tblogger = TBLogger(local_rank, args.output, 'train')
     val_tblogger = TBLogger(local_rank, args.output, 'val', dummies=True)
-    
+
     for epoch in range(start_epoch, args.epochs):
         torch.cuda.synchronize()
         epoch_start_time = time.perf_counter()
@@ -482,21 +482,49 @@ def main():
                                  args.anneal_steps, args.anneal_factor, local_rank)
             new_lr = optimizer.param_groups[0]['lr']
             train_tblogger.log_value(iteration, 'lrate', new_lr)
-            
+
             if new_lr != old_lr:
                 dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
-            #    train_tblogger.log_value(iteration, 'lrate', new_lr)
             else:
                 dllog_lrate_change = None
-            
+
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
+            # x = (text_padded, input_lengths, mel_padded, max_len, output_lengths)
+            # y = (mel_padded, gate_padded)
+            # print(x)
+
+            # N -- batch size
+            # M -- number of mel channels ?
+            # OLmax -- maximum output (mel) length
+            # ILmax -- maximum input (text) length
+            #                             N   M OLmax ILmax
+                # text_padded           [20,          168]
+                # input_lengths         [20]
+                # mel_padded            [20, 80, 889]
+                # max_len                             168
+                # output_lengths        [20]
+                # gate_padded           [20,     889]
 
             y_pred = model(x)
 
             #FIXME Temporary output below
             if i == 0:
                 log_y_pred(y_pred, iteration, args.output, train_tblogger)
+
+            # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
+            #                             N   M  OLmax      L 
+                # mel_outputs           [20, 80, 889]       
+                # mel_outputs_postnet   [20, 80, 889]       
+                # gate_outputs          [20,     889]  
+                # alignments            [20,     889, 168]
+
+
+            DLLogger.log(step=(epoch, i, num_batches), 
+                         data=OrderedDict([
+                             ('alignments shape', (y_pred[3]).shape),
+                             ('alignments', y_pred[3])
+                    ]))
 
             loss = criterion(y_pred, y)
             train_tblogger.log_value(iteration, 'loss', loss.item())
@@ -538,9 +566,9 @@ def main():
             # End of batch
             DLLogger.log(step=(epoch, i, num_batches), 
                          data=OrderedDict([
-                            ('train_loss', reduced_loss),
-                            ('train_items_per_sec', items_per_sec),
-                            ('train_iter_time', iter_time)
+                             ('train_loss', reduced_loss),
+                             ('train_items_per_sec', items_per_sec),
+                             ('train_iter_time', iter_time)
                         ]))
 
             # FIXME: iter_meta to be collected. train_tblogger.log_meta(iteration, iter_meta)
