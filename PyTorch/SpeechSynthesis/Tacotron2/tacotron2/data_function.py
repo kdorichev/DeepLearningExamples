@@ -69,12 +69,25 @@ class TextMelLoader(torch.utils.data.Dataset):
         mel = self.get_mel(audiopath)
         return (text, mel, len_text)
 
-    def get_mel(self, filename):
+    def get_mel(self, filename: str):
+        """Return mel spectrogram created from audio- loaded from `filename`.
+
+        Args:
+            filename (str): Audio or *.pt file to load from.
+
+        Raises:
+            ValueError: In case resampling in load_wav_to_torch() doen't match expected rate.
+
+        Returns:
+            [type]: [description]
+        """
         if not self.load_mel_from_disk:
             audio, sampling_rate = load_wav_to_torch(filename, self.stft.sampling_rate)
 
             if sampling_rate != self.stft.sampling_rate:
-                raise ValueError(f"{sampling_rate} SR doesn't match target {self.stft.sampling_rate} SR")
+                raise ValueError(
+                    f"{sampling_rate} SR doesn't match target {self.stft.sampling_rate} SR")
+
             audio_norm = audio / self.max_wav_value
             audio_norm = audio_norm.unsqueeze(0)
             audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)

@@ -680,7 +680,24 @@ class Tacotron2(nn.Module):
         return outputs
 
 
-    def forward(self, inputs):
+    def forward(self, inputs: Tuple) -> list:
+        """Forward pass.
+
+        Args:
+            inputs (Tuple): 
+                text_padded
+                input_lengths
+                mel_padded
+                max_len
+                output_lengths
+
+        Returns:
+            list:
+                mel_outputs
+                mel_outputs_postnet
+                gate_outputs
+                alignments
+        """
         inputs, input_lengths, targets, max_len, output_lengths = inputs
         input_lengths, output_lengths = input_lengths.data, output_lengths.data
 

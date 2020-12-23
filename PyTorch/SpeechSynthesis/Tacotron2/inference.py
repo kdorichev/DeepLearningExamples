@@ -25,8 +25,14 @@
 #
 # *****************************************************************************
 
+import argparse
+from argparse import ArgumentParser
+import sys
+import time
+
 from tacotron2.text import text_to_sequence
 import models
+
 import torch
 import argparse
 from argparse import ArgumentParser
@@ -35,9 +41,6 @@ from scipy.io.wavfile import write
 import matplotlib
 import matplotlib.pyplot as plt
 
-import sys
-
-import time
 import dllogger as DLLogger
 from dllogger import StdOutBackend, JSONStreamBackend, Verbosity
 
@@ -106,14 +109,14 @@ def unwrap_distributed(state_dict):
     return new_state_dict
 
 
-def load_and_setup_model(model_name: str, parser: ArgumentParser, checkpoint, 
-                         fp16_run: bool, cpu_run: bool, forward_is_infer: bool=False):
+def load_and_setup_model(model_name: str, parser: ArgumentParser, checkpoint: str, 
+                         fp16_run: bool, cpu_run: bool, forward_is_infer: bool = False):
     """[summary]
 
     Args:
         model_name (str): One of the 'Tacotron2' or 'WaveGlow'.
         parser (ArgumentParser): [description]
-        checkpoint ([type]): [description]
+        checkpoint (str): [description]
         fp16_run (bool): [description]
         cpu_run (bool): [description]
         forward_is_infer (bool, optional): [description]. Defaults to False.
@@ -121,7 +124,7 @@ def load_and_setup_model(model_name: str, parser: ArgumentParser, checkpoint,
     Returns:
         [type]: [description]
     """
-    
+
     model_parser = models.parse_model_args(model_name, parser, add_help=False)
     model_args, _ = model_parser.parse_known_args()
     model_config = models.get_model_config(model_name, model_args)
@@ -170,7 +173,7 @@ def pad_sequences(batch):
 def prepare_input_sequence(texts, cpu_run=False):
 
     d = []
-    for i,text in enumerate(texts):
+    for i, text in enumerate(texts):
         d.append(torch.IntTensor(
             text_to_sequence(text, ['russian_cleaner2'])[:]))
 
@@ -215,7 +218,7 @@ def main():
     DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT,
                                               args.output+'/'+args.log_file),
                             StdOutBackend(Verbosity.VERBOSE)])
-    for k,v in vars(args).items():
+    for k, v in vars(args).items():
         DLLogger.log(step="PARAMETER", data={k:v})
     DLLogger.log(step="PARAMETER", data={'model_name':'Tacotron2_PyT'})
 
@@ -238,8 +241,8 @@ def main():
     try:
         f = open(args.input, 'r')
         texts = f.readlines()
-    except:
-        print("Could not read file")
+    except OSError:
+        print(f"Could not read file {args.input}")
         sys.exit(1)
 
     if args.include_warmup:
@@ -269,7 +272,7 @@ def main():
     with torch.no_grad(), MeasureTime(measurements, "denoiser_time", args.cpu):
         audios = denoiser(audios, strength=args.denoising_strength).squeeze(1)
 
-    print("Stopping after",mel.size(2),"decoder steps")
+    print(f"Stopping after {mel.size(2)} decoder steps")
 
     tacotron2_infer_perf = mel.size(0)*mel.size(2)/measurements['tacotron2_time']   
     waveglow_infer_perf = audios.size(0)*audios.size(1)/measurements['waveglow_time']
