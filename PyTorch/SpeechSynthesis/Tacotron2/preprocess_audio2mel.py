@@ -20,8 +20,8 @@ def parse_args(parser):
                         help='Type of text cleaners for input text. Default: russian_cleaner2')
     parser.add_argument('--max-wav-value', default=1.0, type=float,
                         help='Maximum audiowave value to divide on for normalization')
-    parser.add_argument('--sampling-rate', default=22050, type=int,
-                        help='Sampling rate. Default: 22050')
+    parser.add_argument('--sampling-rate', default=24000, type=int,
+                        help='Sampling rate. Default: 24000')
     parser.add_argument('--filter-length', default=1024, type=int,
                         help='Filter length. Default: 1024')
     parser.add_argument('--hop-length', default=256, type=int,

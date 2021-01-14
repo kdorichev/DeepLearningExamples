@@ -123,7 +123,7 @@ def parse_args(parser):
     audio = parser.add_argument_group('audio parameters')
     audio.add_argument('--max-wav-value', default=1.0, type=float,
                        help='Maximum audiowave value')
-    audio.add_argument('--sampling-rate', default=22050, type=int,
+    audio.add_argument('--sampling-rate', default=24000, type=int,
                        help='Sampling rate')
     audio.add_argument('--filter-length', default=1024, type=int,
                        help='Filter length')
@@ -332,7 +332,7 @@ def log_y_pred(y_pred: list, iteration: int, path: str, tblogger):
     """Log the components of `y_pred` onto disk and tensorboard.
     """
     print((y_pred[0]).shape, len(y_pred[1]), len(y_pred[2]))
-    return
+    
     names = "mel_outputs mel_outputs_postnet gate_outputs alignments".split()
     for i, t in enumerate(y_pred):
         torch.save(t, os.path.join(path, f'{names[i]}_{iteration}.pt'))
@@ -520,11 +520,11 @@ def main():
                 # alignments            [20,     889, 168]
 
 
-            DLLogger.log(step=(epoch, i, num_batches), 
-                         data=OrderedDict([
-                             ('alignments shape', (y_pred[3]).shape),
-                             ('alignments', y_pred[3])
-                    ]))
+            #DLLogger.log(step=(epoch, i, num_batches), 
+            #             data=OrderedDict([
+            #                 ('alignments shape', (y_pred[3]).shape),
+            #                 ('alignments', y_pred[3])
+            #        ]))
 
             loss = criterion(y_pred, y)
             train_tblogger.log_value(iteration, 'loss', loss.item())
