@@ -30,8 +30,8 @@ def parse_args(parser):
                         help='Window length. Default: 1024')
     parser.add_argument('--mel-fmin', default=0.0, type=float,
                         help='Minimum mel frequency. Default: 0.0')
-    parser.add_argument('--mel-fmax', default=8000.0, type=float,
-                        help='Maximum mel frequency. Default: 8000.0')
+    parser.add_argument('--mel-fmax', default=12000.0, type=float,
+                        help='Maximum mel frequency. Default: 12000.0')
     parser.add_argument('--n-mel-channels', default=80, type=int,
                         help='Number of bins in mel-spectrograms. Default: 80')
     parser.add_argument('--load-mel-from-disk', action='store_true', default=False, 
