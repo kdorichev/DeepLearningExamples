@@ -680,7 +680,7 @@ class Tacotron2(nn.Module):
         return outputs
 
 
-    def forward(self, inputs: Tuple) -> list:
+    def forward(self, inputs) -> list:
         """Forward pass.
 
         Args:
