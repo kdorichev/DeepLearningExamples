@@ -50,11 +50,10 @@ class MelAudioLoader(torch.utils.data.Dataset):
         random.shuffle(self.audiopaths_and_text)
 
     def get_mel_audio_pair(self, filename):
-        audio, sampling_rate = load_wav_to_torch(filename)
+        audio, sampling_rate = load_wav_to_torch(filename, sr = self.sampling_rate)
 
         if sampling_rate != self.stft.sampling_rate:
-            raise ValueError("{} {} SR doesn't match target {} SR".format(
-                sampling_rate, self.stft.sampling_rate))
+            raise ValueError(f"{sampling_rate} SR doesn't match target {self.stft.sampling_rate} SR")
 
         # Take segment
         if audio.size(0) >= self.segment_length:
