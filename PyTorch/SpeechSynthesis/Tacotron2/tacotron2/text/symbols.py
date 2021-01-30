@@ -11,7 +11,7 @@ from https://github.com/keithito/tacotron
 """
 
 _pad        = '_'
-_punctuation = '!?,.:;– '
+_punctuation = '!?,.:;– …'
 _special = '+-'
 _letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
 
