@@ -90,6 +90,8 @@ def parse_args(parser):
                           help='Run cudnn benchmark')
     training.add_argument('--disable-uniform-initialize-bn-weight', action='store_true',
                           help='disable uniform initialization of batchnorm layer weight')
+    training.add_argument('--gradient-accumulation-steps', type=int, default=1,
+                          help='Training steps to accumulate gradients for')
 
     optimization = parser.add_argument_group('optimization setup')
     optimization.add_argument(
@@ -176,7 +178,7 @@ def init_distributed(args, world_size, rank, group_name):
     print("Done initializing distributed")
 
 
-def save_checkpoint(model, optimizer, epoch: int, config: dict, amp_run: bool, 
+def save_checkpoint(model, optimizer, epoch: int, config: dict, amp_run: bool,
                     output_dir: str, model_name: str,
                     local_rank: int, world_size: int):
 
@@ -208,8 +210,7 @@ def save_checkpoint(model, optimizer, epoch: int, config: dict, amp_run: bool,
 
         checkpoint_filename = f"checkpoint_{model_name}_{epoch}.pt"
         checkpoint_path = os.path.join(output_dir, checkpoint_filename)
-        print("Saving model and optimizer state at epoch {} to {}".format(
-            epoch, checkpoint_path))
+        print(f"Saving model and optimizer state at epoch {epoch} to {checkpoint_path}")
         torch.save(checkpoint, checkpoint_path)
 
         symlink_src = checkpoint_filename
@@ -221,8 +222,10 @@ def save_checkpoint(model, optimizer, epoch: int, config: dict, amp_run: bool,
         os.symlink(symlink_src, symlink_dst)
 
 
-def get_last_checkpoint_filename(output_dir, model_name):
-    symlink = os.path.join(output_dir, "checkpoint_{}_last.pt".format(model_name))
+def get_last_checkpoint_filename(output_dir: str, model_name: str) -> str:
+    """Return path to the last checkpoint for `model_name`, if any.
+    """
+    symlink = os.path.join(output_dir, f"checkpoint_{model_name}_last.pt")
     if os.path.exists(symlink):
         print("|||| Loading checkpoint from symlink", symlink)
         return os.path.join(output_dir, os.readlink(symlink))
@@ -232,6 +235,8 @@ def get_last_checkpoint_filename(output_dir, model_name):
 
 
 def load_checkpoint(model, optimizer, epoch, config, amp_run, filepath, local_rank):
+    """Load checkpoint from `filepath`.
+    """
 
     checkpoint = torch.load(filepath, map_location='cpu')
 
@@ -291,8 +296,7 @@ def validate(model, criterion, valset, epoch, batch_iter, batch_size,
             val_loss += reduced_val_loss
 
             torch.cuda.synchronize()
-            iter_stop_time = time.perf_counter()
-            iter_time = iter_stop_time - iter_start_time
+            iter_time = time.perf_counter() - iter_start_time
 
             items_per_sec = reduced_num_items/iter_time
             DLLogger.log(step=(epoch, batch_iter, i), data={'val_items_per_sec': items_per_sec})
@@ -303,9 +307,10 @@ def validate(model, criterion, valset, epoch, batch_iter, batch_size,
 
         DLLogger.log(step=(epoch,), data={'val_loss': val_loss})
         DLLogger.log(step=(epoch,), data={'val_items_per_sec':
-                                         (val_items_per_sec/num_iters if num_iters > 0 else 0.0)})
+                                         (int(val_items_per_sec/num_iters) if num_iters > 0 else 0)})
 
         return val_loss
+
 
 def adjust_learning_rate(iteration, epoch, optimizer, learning_rate,
                          anneal_steps, anneal_factor, rank):
@@ -331,8 +336,6 @@ def adjust_learning_rate(iteration, epoch, optimizer, learning_rate,
 def log_y_pred(y_pred: list, iteration: int, path: str, tblogger):
     """Log the components of `y_pred` onto disk and tensorboard.
     """
-    print((y_pred[0]).shape, len(y_pred[1]), len(y_pred[2]))
-    
     names = "mel_outputs mel_outputs_postnet gate_outputs alignments".split()
     for i, t in enumerate(y_pred):
         torch.save(t, os.path.join(path, f'{names[i]}_{iteration}.pt'))
@@ -341,10 +344,11 @@ def log_y_pred(y_pred: list, iteration: int, path: str, tblogger):
             t = t.float().unsqueeze(dim=1)  # B, C, H, W
             t = make_grid(t, scale_each=True, pad_value=1, nrow=5, normalize=True) #.transpose(0,1)  # 3, H, W
             tblogger.log_image(names[i], t, global_step=iteration, dataformats='CHW')
-    return
 
 
 def main():
+    """Training of Tacotron2 or WaveGlow model.
+    """
 
     parser = argparse.ArgumentParser(description='PyTorch Tacotron 2 Training')
     parser = parse_args(parser)
@@ -371,7 +375,7 @@ def main():
 
     for k, v in vars(args).items():
         DLLogger.log(step="PARAMETER", data={k:v})
-    DLLogger.log(step="PARAMETER", data={'model_name':'Tacotron2_PyT'})
+    # DLLogger.log(step="PARAMETER", data={'model_name':'Tacotron2_PyT'})
 
     model_name = args.model_name
     parser = models.parse_model_args(model_name, parser)
@@ -431,7 +435,7 @@ def main():
     if distributed_run:
         train_sampler, shuffle = DistributedSampler(trainset), False
     else:
-        train_sampler, shuffle = None, True  #FIXME True --> False for test purposes
+        train_sampler, shuffle = None, True
 
     train_loader = DataLoader(trainset, num_workers=1, shuffle=shuffle,
                               sampler=train_sampler,
@@ -443,25 +447,25 @@ def main():
 
     batch_to_gpu = data_functions.get_batch_to_gpu(model_name)
 
-    iteration = 0
+    total_iter = 0  # total number of iterations in the training
     train_epoch_items_per_sec = 0.0
     val_loss = 0.0
     num_iters = 0
+    # iteration = 0
 
     model.train()
 
     train_tblogger = TBLogger(local_rank, args.output, 'train')
     val_tblogger = TBLogger(local_rank, args.output, 'val', dummies=True)
 
+    # ---------- TRAINING CYCLE -----------------------------------------------
     for epoch in range(start_epoch, args.epochs):
         torch.cuda.synchronize()
         epoch_start_time = time.perf_counter()
         # used to calculate avg items/sec over epoch
-        reduced_num_items_epoch = 0
+        # reduced_num_items_epoch = 0
 
         train_epoch_items_per_sec = 0.0
-
-        num_iters = 0
         reduced_loss = 0
 
         # if overflow at the last iteration then do not save checkpoint
@@ -470,18 +474,35 @@ def main():
         if distributed_run:
             train_loader.sampler.set_epoch(epoch)
 
-        num_batches = len(train_loader)
+        accumulated_steps = 0  # args.gradient_accumulation_steps
+
+        iter_loss = 0
+        iter_num_frames = 0
+        iter_meta = {}
+
+        epoch_iter = 0  # number of iterations in the current epoch
+
+        num_iters = len(train_loader) // args.gradient_accumulation_steps
+        print(f'num_iters = {num_iters}')
+        iter_items = 0  # number of items processed per iteration
+
+        # ----------- BATCH CYCLE ----------------------------------------------
         for i, batch in enumerate(train_loader):
             torch.cuda.synchronize()
-            iter_start_time = time.perf_counter()
-     #       DLLogger.log(step=(epoch, i),
-     #                    data={'glob_iter/iters_per_epoch': str(iteration)+"/"+str(num_iters)})
+
+            if accumulated_steps == 0:
+                if epoch_iter == num_iters:
+                    break
+
+                total_iter += 1
+                epoch_iter += 1
+                iter_start_time = time.perf_counter()
 
             old_lr = optimizer.param_groups[0]['lr']
-            adjust_learning_rate(iteration, epoch, optimizer, args.learning_rate,
+            adjust_learning_rate(total_iter, epoch, optimizer, args.learning_rate,
                                  args.anneal_steps, args.anneal_factor, local_rank)
             new_lr = optimizer.param_groups[0]['lr']
-            train_tblogger.log_value(iteration, 'lrate', new_lr)
+            train_tblogger.log_value(total_iter, 'lrate', new_lr)
 
             if new_lr != old_lr:
                 dllog_lrate_change = f'{old_lr:.2E} -> {new_lr:.2E}'
@@ -492,7 +513,6 @@ def main():
             x, y, num_items = batch_to_gpu(batch)
             # x = (text_padded, input_lengths, mel_padded, max_len, output_lengths)
             # y = (mel_padded, gate_padded)
-            # print(x)
 
             # N -- batch size
             # M -- number of mel channels ?
@@ -509,25 +529,24 @@ def main():
             y_pred = model(x)
 
             #FIXME Temporary output below
-            if i == 0:
-                log_y_pred(y_pred, iteration, args.output, train_tblogger)
+            if model_name == "Tacotron2" and (i == 0):
+                log_y_pred(y_pred, total_iter, args.output, train_tblogger)
 
             # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
-            #                             N   M  OLmax      L 
-                # mel_outputs           [20, 80, 889]       
-                # mel_outputs_postnet   [20, 80, 889]       
-                # gate_outputs          [20,     889]  
+            #                             N   M  OLmax      L
+                # mel_outputs           [20, 80, 889]
+                # mel_outputs_postnet   [20, 80, 889]
+                # gate_outputs          [20,     889]
                 # alignments            [20,     889, 168]
 
-
-            #DLLogger.log(step=(epoch, i, num_batches), 
+            # DLLogger.log(step=(epoch, i, num_iters),
             #             data=OrderedDict([
             #                 ('alignments shape', (y_pred[3]).shape),
             #                 ('alignments', y_pred[3])
             #        ]))
 
             loss = criterion(y_pred, y)
-            train_tblogger.log_value(iteration, 'loss', loss.item())
+            loss /= args.gradient_accumulation_steps
 
             if distributed_run:
                 reduced_loss = reduce_tensor(loss.data, world_size).item()
@@ -538,10 +557,12 @@ def main():
             if np.isnan(reduced_loss):
                 raise Exception("loss is NaN")
 
-            num_iters += 1
+            accumulated_steps += 1
+            iter_loss += reduced_loss
 
             # accumulate number of items processed in this epoch
-            reduced_num_items_epoch += reduced_num_items
+            # reduced_num_items_epoch += reduced_num_items
+            iter_items += reduced_num_items
 
             if args.amp:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -553,42 +574,49 @@ def main():
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     model.parameters(), args.grad_clip_thresh)
 
-            train_tblogger.log_grads(iteration, model)
+            if (accumulated_steps + 1) % args.gradient_accumulation_steps == 0:
+                torch.cuda.synchronize() # Wait for all kernels in all streams on a CUDA device to complete
+                optimizer.step()
 
-            optimizer.step()
+                iter_time = time.perf_counter() - iter_start_time
+                items_per_sec = iter_items/iter_time
+                train_epoch_items_per_sec += items_per_sec
 
-            torch.cuda.synchronize() # Wait for all kernels in all streams on a CUDA device to complete
-            iter_stop_time = time.perf_counter()
-            iter_time = iter_stop_time - iter_start_time
-            items_per_sec = reduced_num_items/iter_time
-            train_epoch_items_per_sec += items_per_sec
+                train_tblogger.log_grads(total_iter, model)
+                train_tblogger.log_value(total_iter, 'loss', iter_loss)
 
-            # End of batch
-            DLLogger.log(step=(epoch, i, num_batches), 
-                         data=OrderedDict([
-                             ('train_loss', reduced_loss),
-                             ('train_items_per_sec', items_per_sec),
-                             ('train_iter_time', iter_time)
-                        ]))
+                model.zero_grad()
 
-            # FIXME: iter_meta to be collected. train_tblogger.log_meta(iteration, iter_meta)
-            iteration += 1
+                DLLogger.log(step=(epoch, epoch_iter, num_iters),
+                            data=OrderedDict([
+                                ('train_loss', iter_loss),
+                                ('train_items_per_sec', int(items_per_sec)),
+                                ('train_iter_time', f'{iter_time:>.1f}')
+                            ]))
 
-        # End of epoch
+                iter_loss = 0.0
+                iter_items = 0
+                total_iter += 1
+                accumulated_steps = 0
+
+            # FIXME: iter_meta to be collected. train_tblogger.log_meta(total_iter, iter_meta)
+
+            # --------- End of batch ------------------------------------------
+
+        # ------------- Finished epoch ----------------------------------------
         torch.cuda.synchronize()
-        epoch_stop_time = time.perf_counter()
-        epoch_time = epoch_stop_time - epoch_start_time
+        epoch_time = time.perf_counter() - epoch_start_time
 
-        DLLogger.log(step=(epoch,), 
+        DLLogger.log(step=(epoch,),
                     data=OrderedDict([('train_loss', reduced_loss),
                                       ('train_items_per_sec',
                                           (train_epoch_items_per_sec/num_iters if num_iters > 0 else 0.0)),
                                       ('train_epoch_time', epoch_time)]))
 
-        val_loss = validate(model, criterion, valset, epoch, iteration,
+        val_loss = validate(model, criterion, valset, epoch, total_iter,
                             args.batch_size, world_size, collate_fn,
                             distributed_run, local_rank, batch_to_gpu)
-        val_tblogger.log_value(iteration, 'loss', val_loss)
+        val_tblogger.log_value(total_iter, 'loss', val_loss)
 
         if (epoch % args.epochs_per_checkpoint == 0) and args.bench_class == "":
             save_checkpoint(model, optimizer, epoch, model_config,
@@ -597,18 +625,18 @@ def main():
         if local_rank == 0:
             DLLogger.flush()
 
-    # End of training
+    # ---------- Finished training --------------------------------------------
     save_checkpoint(model, optimizer, epoch, model_config,
                     args.amp, args.output, args.model_name,
                     local_rank, world_size)
     torch.cuda.synchronize()
     run_stop_time = time.perf_counter()
     run_time = run_stop_time - run_start_time
-    
-    DLLogger.log(step=tuple(), data={'run_time': run_time})
+
+    DLLogger.log(step=tuple(), data={'run_time': int(run_time)})
     DLLogger.log(step=tuple(), data={'val_loss': val_loss})
     DLLogger.log(step=tuple(), data={'train_items_per_sec':
-                                     (train_epoch_items_per_sec/num_iters if num_iters > 0 else 0.0)})
+                                     (int(train_epoch_items_per_sec/num_iters) if num_iters > 0 else 0)})
 
     if local_rank == 0:
         DLLogger.flush()
