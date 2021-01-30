@@ -55,7 +55,7 @@ def get_mask_from_lengths(lengths: torch.Tensor) -> torch.Tensor:
     return mask
 
 
-def load_wav_to_torch(full_path: str, sr: Optional[int] = 22050) -> Tuple[torch.Tensor, int]:
+def load_wav_to_torch(full_path: str, sr: Optional[int] = 24000) -> Tuple[torch.Tensor, int]:
     """Load audio file from `full_path` with optional resamplling to `sr`.
     Args:
         full_path (str): path to audio file.
@@ -102,6 +102,15 @@ def load_filepaths_and_text(dataset_path: str, filename: str, split_char="|") ->
 
 
 def to_gpu(x):
+    """A wrapper around tensor.cuda().
+    Return a copy of `x` in GPU memory, if available.
+
+    Args:
+        x (tensor).
+
+    Returns:
+        x (tensor).
+    """
     x = x.contiguous()
 
     if torch.cuda.is_available():
