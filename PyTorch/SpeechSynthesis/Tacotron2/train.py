@@ -135,7 +135,7 @@ def parse_args(parser):
                        help='Window length')
     audio.add_argument('--mel-fmin', default=0.0, type=float,
                        help='Minimum mel frequency')
-    audio.add_argument('--mel-fmax', default=8000.0, type=float,
+    audio.add_argument('--mel-fmax', default=12000.0, type=float,
                        help='Maximum mel frequency')
 
     distributed = parser.add_argument_group('distributed setup')
