@@ -333,17 +333,13 @@ def adjust_learning_rate(iteration, epoch, optimizer, learning_rate,
         param_group['lr'] = lr
 
 
-def log_y_pred(y_pred: list, iteration: int, path: str, tblogger):
-    """Log the components of `y_pred` onto disk and tensorboard.
+def log_y_pred(alignments, iteration: int, path: str, tblogger):
+    """Log the components of `alignments` onto disk and tensorboard.
     """
-    names = "mel_outputs mel_outputs_postnet gate_outputs alignments".split()
-    for i, t in enumerate(y_pred):
-        torch.save(t, os.path.join(path, f'{names[i]}_{iteration}.pt'))
-        if len(t.shape) != 2: # Not gate_outputs
-            t = t.detach()  # B, H, W
-            t = t.float().unsqueeze(dim=1)  # B, C, H, W
-            t = make_grid(t, scale_each=True, pad_value=1, nrow=5, normalize=True) #.transpose(0,1)  # 3, H, W
-            tblogger.log_image(names[i], t, global_step=iteration, dataformats='CHW')
+    torch.save(alignments, os.path.join(path, f'alignments_{iteration}.pt'))
+    alignments = alignments.detach().float().unsqueeze(dim=1)  # B, H, W ==> B, C, H, W
+    alignments = make_grid(alignments, scale_each=True, pad_value=1, nrow=5, normalize=True) #.transpose(0,1)  # 3, H, W
+    tblogger.log_image('alignments', alignments, global_step=iteration, dataformats='CHW')
 
 
 def main():
@@ -530,7 +526,7 @@ def main():
 
             #FIXME Temporary output below
             if model_name == "Tacotron2" and (i == 0):
-                log_y_pred(y_pred, total_iter, args.output, train_tblogger)
+                log_y_pred(y_pred[3], total_iter, args.output, train_tblogger)
 
             # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
             #                             N   M  OLmax      L

@@ -99,8 +99,13 @@ class TacotronSTFT(torch.nn.Module):
         -------
         mel_output: torch.FloatTensor of shape (B, n_mel_channels, T)
         """
-        assert(torch.min(y.data) >= -1)
-        assert(torch.max(y.data) <= 1)
+
+        if ((torch.max(y.data) > 1) or (torch.min(y.data) < -1)):
+            y.data /= torch.max(torch.min(y.data).abs(), torch.max(y.data))
+            print(f"Normalized: {torch.min(y.data)} ... {torch.max(y.data)}")
+            
+        assert(torch.min(y.data) >= -1), f"Min value of audio tensor: {torch.min(y.data)} < -1"
+        assert(torch.max(y.data) <= 1), f"Max value of audio tensor: {torch.max(y.data)} > 1"
 
         magnitudes, phases = self.stft_fn.transform(y)
         magnitudes = magnitudes.data
