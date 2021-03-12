@@ -29,6 +29,11 @@ import os
 import time
 import argparse
 import numpy as np
+
+import matplotlib
+#matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 from contextlib import contextmanager
 from collections import OrderedDict
 import torch
@@ -333,13 +338,25 @@ def adjust_learning_rate(iteration, epoch, optimizer, learning_rate,
         param_group['lr'] = lr
 
 
-def log_y_pred(alignments, iteration: int, path: str, tblogger):
+def log_alignment(alignments, iteration: int, path: str, tblogger):
     """Log the components of `alignments` onto disk and tensorboard.
     """
     torch.save(alignments, os.path.join(path, f'alignments_{iteration}.pt'))
-    alignments = alignments.detach().float().unsqueeze(dim=1)  # B, H, W ==> B, C, H, W
-    alignments = make_grid(alignments, scale_each=True, pad_value=1, nrow=5, normalize=True) #.transpose(0,1)  # 3, H, W
-    tblogger.log_image('alignments', alignments, global_step=iteration, dataformats='CHW')
+    alignment = alignments[0]
+    alignment = alignment.detach().float().T.unsqueeze(dim=0)  # B, W, H ==> 1, H, W
+    alignment /= alignment.max()
+    #tblogger.log_image('alignment', alignment, global_step=iteration, dataformats='CHW')
+
+    for i in range(alignments.shape[0]):
+        fig = plt.figure()
+        plt.imshow(alignments[0].float().data.cpu().numpy().T, aspect="auto", origin="lower")
+        tblogger.log_figure('alignments', fig, global_step=iteration)
+
+        # alignment = alignments[i]
+        # fig,_ = plt.imshow(alignment.float().data.cpu().numpy().T, aspect="auto", origin="lower")
+        # tblogger.log_figure('alignments', fig, global_step=iteration, dataformats='CHW')
+        # figure_path = args.output+"alignment_"+str(i)+"_"+args.suffix+".png"
+        # plt.savefig(figure_path)    
 
 
 def main():
@@ -479,7 +496,6 @@ def main():
         epoch_iter = 0  # number of iterations in the current epoch
 
         num_iters = len(train_loader) // args.gradient_accumulation_steps
-        print(f'num_iters = {num_iters}')
         iter_items = 0  # number of items processed per iteration
 
         # ----------- BATCH CYCLE ----------------------------------------------
@@ -526,7 +542,7 @@ def main():
 
             #FIXME Temporary output below
             if model_name == "Tacotron2" and (i == 0):
-                log_y_pred(y_pred[3], total_iter, args.output, train_tblogger)
+                log_alignment(y_pred[3], total_iter, args.output, train_tblogger)
 
             # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
             #                             N   M  OLmax      L
