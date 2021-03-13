@@ -145,3 +145,23 @@ class TBLogger(object):
             self.summary_writer.add_image(tag, img_tensor, global_step = global_step, 
                     walltime=walltime, dataformats=dataformats)
 
+    def log_figure(self, tag: str, img_tensor, global_step = None,
+                  walltime: float = None):
+        """Add image to log via tensorboardX.
+
+        Args:
+            tag (str): Data identifier
+            img_tensor (Union[torch.Tensor, numpy.array]): An uint8 or float Tensor
+                of shape [channel, height, width] where channel is 1, 3, or 4.
+                The elements in img_tensor can either have values in [0, 1] (float32)
+                or [0, 255] (uint8). Users are responsible to scale the data in
+                the correct range/type.
+            walltime (float, optional): Optional override default walltime (time.time()) of event.
+                Defaults to None.
+            dataformats (str, optional): Specifies the meaning of each dimension of
+                the input tensor. Supported: CHW, HWC, HW. Defaults to 'CHW'.
+        """
+        if self.enabled:
+            self.summary_writer.add_figure(tag, img_tensor, global_step = global_step, 
+                    walltime=walltime)
+
