@@ -162,7 +162,9 @@ class TextMelCollate():
             output_lengths, len_x
 
 
-def batch_to_gpu(batch):
+def batch_to_gpu(batch: tuple):
+    """Moves `batch` to GPU by elements.
+    """
     text_padded, input_lengths, mel_padded, gate_padded, \
         output_lengths, len_x = batch
     text_padded = to_gpu(text_padded).long()
