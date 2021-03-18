@@ -295,7 +295,7 @@ def validate(model, criterion, valset, epoch, batch_iter, batch_size,
             if distributed_run:
                 reduced_val_loss = reduce_tensor(loss.data, world_size).item()
                 reduced_num_items = reduce_tensor(num_items.data, 1).item()
-            else:               #
+            else:
                 reduced_val_loss = loss.item()
                 reduced_num_items = num_items.item()
             val_loss += reduced_val_loss
@@ -304,14 +304,14 @@ def validate(model, criterion, valset, epoch, batch_iter, batch_size,
             iter_time = time.perf_counter() - iter_start_time
 
             items_per_sec = reduced_num_items/iter_time
-            DLLogger.log(step=(epoch, batch_iter, i), data={'val_items_per_sec': items_per_sec})
+            DLLogger.log(step=(epoch, batch_iter, i), data={'val_mel_frames_per_sec': int(items_per_sec)})
             val_items_per_sec += items_per_sec
             num_iters += 1
 
         val_loss = val_loss/(i + 1)
 
         DLLogger.log(step=(epoch,), data={'val_loss': val_loss})
-        DLLogger.log(step=(epoch,), data={'val_items_per_sec':
+        DLLogger.log(step=(epoch,), data={'val_mel_frames_per_sec':
                                          (int(val_items_per_sec/num_iters) if num_iters > 0 else 0)})
 
         return val_loss
@@ -476,7 +476,7 @@ def main():
         torch.cuda.synchronize()
         epoch_start_time = time.perf_counter()
         # used to calculate avg items/sec over epoch
-        # reduced_num_items_epoch = 0
+        reduced_num_items_epoch = 0
 
         train_epoch_items_per_sec = 0.0
         reduced_loss = 0
@@ -523,8 +523,10 @@ def main():
 
             model.zero_grad()
             x, y, num_items = batch_to_gpu(batch)
+            # print(f'output_lengths - {x[4]}')
             # x = (text_padded, input_lengths, mel_padded, max_len, output_lengths)
-            # y = (mel_padded, gate_padded)
+            # y = (mel_padded, gate_padded)            
+            # num_items -- сумма длин всех мелспектр. в батче: len_x = torch.sum(output_lengths)
 
             # N -- batch size
             # M -- number of mel channels ?
@@ -573,7 +575,7 @@ def main():
             iter_loss += reduced_loss
 
             # accumulate number of items processed in this epoch
-            # reduced_num_items_epoch += reduced_num_items
+            reduced_num_items_epoch += reduced_num_items
             iter_items += reduced_num_items
 
             if args.amp:
@@ -602,7 +604,7 @@ def main():
                 DLLogger.log(step=(epoch, epoch_iter, num_iters),
                             data=OrderedDict([
                                 ('train_loss', iter_loss),
-                                ('train_items_per_sec', int(items_per_sec)),
+                                ('train_mel_frames_per_sec', int(items_per_sec)),
                                 ('train_iter_time', f'{iter_time:>.1f}')
                             ]))
 
@@ -621,7 +623,7 @@ def main():
 
         DLLogger.log(step=(epoch,),
                     data=OrderedDict([('train_loss', reduced_loss),
-                                      ('train_items_per_sec',
+                                      ('train_mel_frames_per_sec',
                                           (train_epoch_items_per_sec/num_iters if num_iters > 0 else 0.0)),
                                       ('train_epoch_time', epoch_time)]))
 
