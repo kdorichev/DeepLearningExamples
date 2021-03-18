@@ -1,1 +1,5 @@
-python -m multiproc train.py -o runs/20210224-bs_20-ga_6-1_10sec -d VN_40h --amp --cudnn-enable --cudnn-benchmark --text-cleaners 'russian_cleaner2' --training-files  VN_40h/mel_dur_pitch_train_filelist.txt --validation-files VN_40h/mel_dur_pitch_valid_filelist.txt -m Tacotron2 --epochs 900 --epochs-per-checkpoint 10 -lr 0.001 -bs 20 --load-mel-from-disk --resume-from-last --gradient-accumulation-steps 6 --mel-fmax 12000
+TEST="test2"
+BS=128
+GA=1
+
+python -m multiproc train.py -o runs/"$TEST" -d minidataset --cudnn-enable --cudnn-benchmark --text-cleaners 'russian_cleaner2' --training-files  minidataset/mel_dur_pitch_train_filelist.txt --validation-files minidataset/mel_dur_pitch_valid_filelist.txt -m Tacotron2 --epochs 1 --epochs-per-checkpoint 1 -lr 0.001 -bs "$BS" --gradient-accumulation-steps "$GA" --mel-fmax 12000 --log-file runs/"$TEST"/nvlog.json --load-mel-from-disk --amp
