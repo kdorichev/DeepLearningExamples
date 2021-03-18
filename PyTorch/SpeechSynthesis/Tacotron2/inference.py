@@ -214,7 +214,7 @@ def main():
         description='PyTorch Tacotron 2 Inference')
     parser = parse_args(parser)
     args, _ = parser.parse_known_args()
-#    print(args) #FIXME
+
     DLLogger.init(backends=[JSONStreamBackend(Verbosity.DEFAULT,
                                               args.output+'/'+args.log_file),
                             StdOutBackend(Verbosity.VERBOSE)])
@@ -224,18 +224,16 @@ def main():
 
     tacotron2 = load_and_setup_model('Tacotron2', parser, args.tacotron2,
                                      args.fp16, args.cpu, forward_is_infer=True)
-#    print('Loaded Tacotron2 model')
+
     waveglow = load_and_setup_model('WaveGlow', parser, args.waveglow,
                                     args.fp16, args.cpu, forward_is_infer=True)
-    # print('Loaded WaveGlow model')
-    # print(waveglow)
+
     denoiser = Denoiser(waveglow)
-    # print(denoiser)
+
     if not args.cpu:
         denoiser.cuda()
 
     jitted_tacotron2 = torch.jit.script(tacotron2)
-    # print(jitted_tacotron2.code)
 
     texts = []
     try:
