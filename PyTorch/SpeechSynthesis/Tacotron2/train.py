@@ -341,16 +341,21 @@ def adjust_learning_rate(iteration, epoch, optimizer, learning_rate,
 def log_alignment(alignments, iteration: int, path: str, tblogger):
     """Log the components of `alignments` onto disk and tensorboard.
     """
-    torch.save(alignments, os.path.join(path, f'alignments_{iteration}.pt'))
-    alignment = alignments[0]
+    # torch.save(alignments, os.path.join(path, f'alignments_{iteration}.pt'))
+    
+    bs = alignments.shape[0]
+    idx = torch.randint(0, bs, (1,)).item()
+    print(f"log_alignment: bs={bs}, idx={idx}")
+    alignment = alignments[idx]
     alignment = alignment.detach().float().T.unsqueeze(dim=0)  # B, W, H ==> 1, H, W
     alignment /= alignment.max()
     #tblogger.log_image('alignment', alignment, global_step=iteration, dataformats='CHW')
 
-    for i in range(alignments.shape[0]):
-        fig = plt.figure()
-        plt.imshow(alignments[0].float().data.cpu().numpy().T, aspect="auto", origin="lower")
-        tblogger.log_figure('alignments', fig, global_step=iteration)
+#    for i in range(alignments.shape[0]):
+    fig = plt.figure()
+    plt.imshow(alignment.float().data.cpu().numpy().T, aspect="auto", origin="lower")
+    plt.savefig(os.path.join(path, f'alignments_{iteration}.png'))
+    tblogger.log_figure('alignments', fig, global_step=iteration)
 
         # alignment = alignments[i]
         # fig,_ = plt.imshow(alignment.float().data.cpu().numpy().T, aspect="auto", origin="lower")
@@ -529,7 +534,7 @@ def main():
             # num_items -- сумма длин всех мелспектр. в батче: len_x = torch.sum(output_lengths)
 
             # N -- batch size
-            # M -- number of mel channels ?
+            # M -- number of mel channels, n_fft
             # OLmax -- maximum output (mel) length
             # ILmax -- maximum input (text) length
             #                             N   M OLmax ILmax
@@ -548,10 +553,10 @@ def main():
 
             # y_pred -- [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
             #                             N   M  OLmax      L
-                # mel_outputs           [20, 80, 889]
-                # mel_outputs_postnet   [20, 80, 889]
-                # gate_outputs          [20,     889]
-                # alignments            [20,     889, 168]
+                # mel_outputs           [20, 80, 889]      [N, M, OLmax]
+                # mel_outputs_postnet   [20, 80, 889]      [N, M, OLmax]
+                # gate_outputs          [20,     889]      [N, OLmax]
+                # alignments            [20,     889, 168] [N, OLmax, ILmax]
 
             # DLLogger.log(step=(epoch, i, num_iters),
             #             data=OrderedDict([
