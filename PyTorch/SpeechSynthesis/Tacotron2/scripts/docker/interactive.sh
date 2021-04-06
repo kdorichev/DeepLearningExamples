@@ -1,1 +1,1 @@
-nvidia-docker run --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -it --rm --ipc=host -v /home/kd/git/DeepLearningExamples_fork/PyTorch/SpeechSynthesis/Tacotron2:/workspace/tacotron2/ --security-opt seccomp=./default_with_perf.json --cap-add=SYS_ADMIN tacotron2:latest bash
+nvidia-docker run --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -it --rm --ipc=host -v $PWD:/workspace/tacotron2/ --security-opt seccomp=./default_with_perf.json --cap-add=SYS_ADMIN tacotron2:latest bash
