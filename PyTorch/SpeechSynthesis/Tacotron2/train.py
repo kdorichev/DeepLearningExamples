@@ -164,7 +164,10 @@ def parse_args(parser):
 def reduce_tensor(tensor, num_gpus):
     rt = tensor.clone()
     dist.all_reduce(rt, op=dist.reduce_op.SUM)
-    rt /= num_gpus
+    if rt.is_floating_point():
+        rt = rt/num_gpus
+    else:
+        rt = rt//num_gpus
     return rt
 
 
@@ -419,13 +422,18 @@ def main():
                                  weight_decay=args.weight_decay)
 
     if args.amp:
+        # apex.amp.initialize(models, optimizers=None, enabled=True, opt_level='O1', 
+        # cast_model_type=None, patch_torch_functions=None, keep_batchnorm_fp32=None, 
+        # master_weights=None, loss_scale=None, cast_model_outputs=None, num_losses=1, 
+        # verbosity=1, min_loss_scale=None, max_loss_scale=16777216.0)
+        # https://nvidia.github.io/apex/amp.html#module-apex.amp
         model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
         if distributed_run:
             model = DDP(model)
 
     try:
         sigma = args.sigma
-    except AttributeError:
+    except AttributeError:G
         sigma = None
 
     start_epoch = [0]
